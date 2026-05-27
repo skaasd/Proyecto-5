@@ -1,7 +1,15 @@
 import { signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/current-user";
-import { CoinDisplay, ConstanciaIndicator, LevelBadge, XPBar } from "@project-name/ui";
+import {
+  BadgeGrid,
+  CoinDisplay,
+  ConstanciaIndicator,
+  LevelBadge,
+  QuestSceneCard,
+  SkillNode,
+  XPBar,
+} from "@project-name/ui";
 import { CalendarDays, Download, LineChart, LogOut, PauseCircle, UserCircle } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -54,6 +62,20 @@ const demoGameProfile = {
   currentLevelXp: 120,
   nextLevelXp: 480,
 };
+
+const demoSkillNodes = [
+  { label: "Fundamentos QA", level: "Nivel II", state: "mastered" as const },
+  { label: "Pruebas de humo", level: "Nivel I", state: "active" as const },
+  { label: "Regresión", level: "Nivel I", state: "active" as const },
+  { label: "Automatización", level: "Por descubrir", state: "locked" as const },
+];
+
+const demoBadges = [
+  { title: "Primer movimiento", rarity: "common" as const },
+  { title: "Observador constante", rarity: "rare" as const },
+  { title: "Cartógrafo QA", rarity: "epic" as const, isLocked: true },
+  { title: "Ruta de regresión", rarity: "rare" as const, isLocked: true },
+];
 
 async function signOutCurrentUser() {
   "use server";
@@ -390,7 +412,17 @@ export default async function DashboardPage({
         <div className="rounded-lg border bg-surface p-5">
           <div className="flex items-center gap-2">
             <LineChart size={20} className="text-primary" aria-hidden="true" />
-            <h2 className="text-lg font-semibold">Mapa de progreso</h2>
+            <h2 className="text-lg font-semibold">Mapa de habilidades</h2>
+          </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {demoSkillNodes.map((node) => (
+              <SkillNode
+                key={node.label}
+                label={node.label}
+                level={node.level}
+                state={node.state}
+              />
+            ))}
           </div>
           <div className="mt-6 grid gap-4">
             <div>
@@ -433,14 +465,11 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      <section className="mt-8 rounded-lg border bg-surface p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-accent">Quest activa</p>
-            <h2 className="mt-2 text-xl font-semibold">Movimiento sugerido</h2>
-          </div>
-        </div>
-
+      <QuestSceneCard
+        eyebrow="Quest activa"
+        reward="+30 XP · +8 monedas"
+        title="Movimiento sugerido"
+      >
         {feedback ? (
           <div className="mt-5 rounded-md border bg-muted p-4 text-sm leading-6">{feedback}</div>
         ) : null}
@@ -486,6 +515,16 @@ export default async function DashboardPage({
             Levanta la API y carga el seed para ver la primera quest demo.
           </p>
         )}
+      </QuestSceneCard>
+
+      <section className="mt-8 rounded-lg border bg-surface p-5">
+        <div>
+          <p className="text-sm font-medium text-accent">Colección</p>
+          <h2 className="mt-2 text-xl font-semibold">Insignias de ruta</h2>
+        </div>
+        <div className="mt-6">
+          <BadgeGrid badges={demoBadges} />
+        </div>
       </section>
 
       <section className="mt-8 rounded-lg border bg-surface p-5">
