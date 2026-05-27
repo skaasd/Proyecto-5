@@ -3,15 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --background: 48 30% 97%;
-  --foreground: 178 20% 12%;
-  --border: 42 18% 82%;
-  --muted: 155 18% 91%;
-  --muted-foreground: 175 8% 34%;
-  --primary: 160 31% 24%;
-  --primary-foreground: 48 30% 97%;
-  --accent: 18 39% 50%;
-  --accent-foreground: 48 30% 97%;
+  --background: 220 13% 5%;
+  --surface: 220 13% 9%;
+  --foreground: 220 16% 96%;
+  --border: 218 14% 14%;
+  --border-emphasis: 218 14% 19%;
+  --muted: 220 13% 12%;
+  --muted-foreground: 222 10% 64%;
+  --primary: 150 84% 61%;
+  --primary-foreground: 220 13% 5%;
+  --accent: 239 84% 67%;
+  --accent-foreground: 220 16% 96%;
+  --accent-success: 142 69% 58%;
+  --accent-progress: 239 84% 67%;
+  --accent-insight: 38 92% 50%;
+  --accent-narrative: 330 81% 60%;
+  --accent-info: 188 86% 43%;
   --font-sans: Inter;
 }
 
@@ -22,4 +29,5 @@
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
 }

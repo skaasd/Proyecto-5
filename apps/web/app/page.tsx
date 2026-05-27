@@ -20,8 +20,8 @@ export default function HomePage() {
             Trayectoria profesional verificable, construida a tu ritmo.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-            Un espacio para aprender QA y automatización registrando evidencia real de práctica, sin
-            rankings, rachas ni presión artificial.
+            Un espacio para recorrer QA y automatización registrando evidencia real de trayectoria,
+            sin rankings, rachas ni presión artificial.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild>
@@ -36,7 +36,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="rounded-lg border bg-white/70 p-5 shadow-sm">
+        <div className="rounded-lg border bg-surface p-5 shadow-sm">
           <div className="grid gap-3">
             {signals.map((signal) => (
               <div

@@ -13,10 +13,11 @@
     "test": "pnpm -r --if-present test",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "build:packages": "pnpm --filter @project-name/core build && pnpm --filter @project-name/db build && pnpm --filter @project-name/shared build && pnpm --filter @project-name/persistence build",
+    "build:packages": "pnpm --filter @project-name/core build && pnpm --filter @project-name/db build && pnpm --filter @project-name/shared build && pnpm --filter @project-name/ui build && pnpm --filter @project-name/persistence build",
     "typecheck": "pnpm build:packages && pnpm -r --if-present typecheck",
     "db:generate": "pnpm --filter @project-name/db prisma:generate",
-    "db:migrate": "pnpm --filter @project-name/db prisma:migrate"
+    "db:migrate": "pnpm --filter @project-name/db prisma:migrate",
+    "db:seed": "pnpm --filter @project-name/db prisma:seed"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

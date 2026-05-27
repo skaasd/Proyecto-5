@@ -36,7 +36,7 @@ export default function LoginPage() {
           Email
         </label>
         <input
-          className="h-11 rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+          className="h-11 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
           id="email"
           name="email"
           placeholder="tu@email.com"

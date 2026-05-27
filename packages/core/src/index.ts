@@ -5,6 +5,14 @@ export type { Question, QuestionWithAnswers, QuestionType } from "./domain/quest
 export type { UserLearningPreferences } from "./domain/user-learning-preferences.js";
 export type { User } from "./domain/user.js";
 export type { ResponseChannel, UserResponse } from "./domain/user-response.js";
+export {
+  applyXpAward,
+  calculateLevelProgress,
+  xpRequiredForLevel,
+  type GameProfile,
+  type LevelProgress,
+  type XPAward,
+} from "./domain/game-progression.js";
 export type { EmailMessage, EmailService } from "./ports/email-service.js";
 export type {
   ExportedUserData,

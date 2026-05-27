@@ -1,6 +1,7 @@
 import { signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/current-user";
+import { CoinDisplay, ConstanciaIndicator, LevelBadge, XPBar } from "@project-name/ui";
 import { CalendarDays, Download, LineChart, LogOut, PauseCircle, UserCircle } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -45,6 +46,15 @@ type UserPreferencesResponse = {
   };
 };
 
+const demoGameProfile = {
+  level: 3,
+  totalXp: 260,
+  coins: 85,
+  constanciaDays: 6,
+  currentLevelXp: 120,
+  nextLevelXp: 480,
+};
+
 async function signOutCurrentUser() {
   "use server";
 
@@ -62,7 +72,7 @@ async function submitUserResponse(formData: FormData) {
   const answerId = formData.get("answerId");
 
   if (typeof questionId !== "string" || typeof answerId !== "string") {
-    redirect("/dashboard?feedback=Elige%20una%20respuesta%20para%20registrar%20tu%20avance.");
+    redirect("/dashboard?feedback=Elige%20un%20movimiento%20para%20registrar%20tu%20avance.");
   }
 
   const response = await fetch(`${apiBaseUrl}/api/responses`, {
@@ -81,11 +91,11 @@ async function submitUserResponse(formData: FormData) {
   });
 
   if (!response.ok) {
-    redirect("/dashboard?feedback=No%20pudimos%20registrar%20la%20respuesta%20todav%C3%ADa.");
+    redirect("/dashboard?feedback=No%20pudimos%20registrar%20el%20movimiento%20todav%C3%ADa.");
   }
 
   const result = (await response.json()) as { feedback?: string };
-  const feedback = encodeURIComponent(result.feedback ?? "Respuesta registrada.");
+  const feedback = encodeURIComponent(result.feedback ?? "Movimiento registrado.");
   redirect(`/dashboard?feedback=${feedback}`);
 }
 
@@ -107,8 +117,8 @@ async function toggleLearningPause(formData: FormData) {
   });
 
   const feedback = isPaused
-    ? "Pausamos los envíos. Tu avance sigue guardado."
-    : "Reanudamos la práctica. Sin apuro, seguimos desde aquí.";
+    ? "Pausamos las quests. Tu avance sigue guardado."
+    : "Reanudamos la ruta. Sin apuro, seguimos desde aquí.";
 
   if (!response.ok) {
     redirect("/dashboard?feedback=No%20pudimos%20actualizar%20la%20pausa%20todav%C3%ADa.");
@@ -224,7 +234,7 @@ function formatAccuracy(accuracyRate: number | null) {
 
 function formatNextReview(nextReviewAt?: string) {
   if (!nextReviewAt) {
-    return "Aparecerá cuando registres tu primera respuesta.";
+    return "Aparecerá cuando registres tu primer movimiento.";
   }
 
   return new Date(nextReviewAt).toLocaleString("es-CL", {
@@ -260,15 +270,15 @@ export default async function DashboardPage({
   const exportUrl = getExportUrl(currentUser.id);
   const metrics = [
     { label: "Conceptos explorados", value: String(overview?.conceptsExplored ?? 0) },
-    { label: "Respuestas registradas", value: String(overview?.totalResponses ?? 0) },
-    { label: "Tiempo registrado", value: formatTime(overview?.totalTimeMs ?? 0) },
+    { label: "Movimientos registrados", value: String(overview?.totalResponses ?? 0) },
+    { label: "Tiempo en observatorio", value: formatTime(overview?.totalTimeMs ?? 0) },
   ];
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-8">
       <header className="flex flex-col gap-4 border-b pb-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-medium text-accent">Dashboard</p>
+          <p className="text-sm font-medium text-accent">Observatorio</p>
           <h1 className="mt-2 text-3xl font-semibold">Tu trayectoria en QA</h1>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <UserCircle size={16} aria-hidden="true" />
@@ -295,7 +305,7 @@ export default async function DashboardPage({
             <input name="isPaused" type="hidden" value={isPaused ? "false" : "true"} />
             <Button type="submit" variant="outline">
               <PauseCircle size={18} aria-hidden="true" />
-              {isPaused ? "Reanudar práctica" : "Pausar envíos"}
+              {isPaused ? "Reanudar ruta" : "Pausar quests"}
             </Button>
           </form>
           {currentUser.isDemo ? (
@@ -313,16 +323,30 @@ export default async function DashboardPage({
         </div>
       </header>
 
+      <section className="mt-8 rounded-lg border bg-surface p-5">
+        <div className="grid gap-5 lg:grid-cols-[auto_auto_auto_1fr] lg:items-center">
+          <LevelBadge level={demoGameProfile.level} />
+          <CoinDisplay coins={demoGameProfile.coins} />
+          <ConstanciaIndicator days={demoGameProfile.constanciaDays} />
+          <XPBar
+            currentXp={demoGameProfile.totalXp}
+            currentLevelXp={demoGameProfile.currentLevelXp}
+            nextLevelXp={demoGameProfile.nextLevelXp}
+            label="Próximo desbloqueo"
+          />
+        </div>
+      </section>
+
       <section className="mt-8 grid gap-4 md:grid-cols-3">
         {metrics.map((metric) => (
-          <div className="rounded-lg border bg-white/70 p-5" key={metric.label}>
+          <div className="rounded-lg border bg-surface p-5" key={metric.label}>
             <p className="text-sm text-muted-foreground">{metric.label}</p>
             <p className="mt-3 text-2xl font-semibold">{metric.value}</p>
           </div>
         ))}
       </section>
 
-      <section className="mt-8 rounded-lg border bg-white/70 p-5">
+      <section className="mt-8 rounded-lg border bg-surface p-5">
         <div>
           <p className="text-sm font-medium text-accent">Ritmo</p>
           <h2 className="mt-2 text-xl font-semibold">Preferencias semanales</h2>
@@ -333,7 +357,7 @@ export default async function DashboardPage({
           className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end"
         >
           <label className="grid gap-2 text-sm font-medium" htmlFor="questionsPerWeek">
-            Preguntas por semana
+            Quests por semana
             <input
               className="h-11 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
               defaultValue={userPreferences?.questionsPerWeek ?? 5}
@@ -363,7 +387,7 @@ export default async function DashboardPage({
       </section>
 
       <section className="mt-8 grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-lg border bg-white/70 p-5">
+        <div className="rounded-lg border bg-surface p-5">
           <div className="flex items-center gap-2">
             <LineChart size={20} className="text-primary" aria-hidden="true" />
             <h2 className="text-lg font-semibold">Mapa de progreso</h2>
@@ -371,7 +395,7 @@ export default async function DashboardPage({
           <div className="mt-6 grid gap-4">
             <div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Precisión observada</span>
+                <span className="text-muted-foreground">Lectura consolidada</span>
                 <span className="font-medium">
                   {formatAccuracy(overview?.accuracyRate ?? null)}
                 </span>
@@ -385,7 +409,7 @@ export default async function DashboardPage({
             </div>
             <div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Preguntas revisadas</span>
+                <span className="text-muted-foreground">Quests recorridas</span>
                 <span className="font-medium">{overview?.totalResponses ?? 0}</span>
               </div>
               <div className="mt-2 h-2 rounded-full bg-muted">
@@ -398,10 +422,10 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        <div className="rounded-lg border bg-white/70 p-5">
+        <div className="rounded-lg border bg-surface p-5">
           <div className="flex items-center gap-2">
             <CalendarDays size={20} className="text-primary" aria-hidden="true" />
-            <h2 className="text-lg font-semibold">Siguiente práctica</h2>
+            <h2 className="text-lg font-semibold">Siguiente movimiento</h2>
           </div>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
             {formatNextReview(overview?.nextReviewAt)}
@@ -409,11 +433,11 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      <section className="mt-8 rounded-lg border bg-white/70 p-5">
+      <section className="mt-8 rounded-lg border bg-surface p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-accent">Práctica demo</p>
-            <h2 className="mt-2 text-xl font-semibold">Próxima pregunta sugerida</h2>
+            <p className="text-sm font-medium text-accent">Quest activa</p>
+            <h2 className="mt-2 text-xl font-semibold">Movimiento sugerido</h2>
           </div>
         </div>
 
@@ -423,8 +447,7 @@ export default async function DashboardPage({
 
         {isPaused ? (
           <div className="mt-6 rounded-md border bg-muted p-4 text-sm leading-6 text-muted-foreground">
-            La práctica está en pausa. Tu trayectoria queda guardada y puedes volver cuando estés
-            listo.
+            La ruta está en pausa. Tu trayectoria queda guardada y puedes volver cuando estés listo.
           </div>
         ) : nextQuestion?.question ? (
           <form action={submitUserResponse} className="mt-6 grid gap-5">
@@ -455,20 +478,20 @@ export default async function DashboardPage({
             </div>
 
             <div>
-              <Button type="submit">Registrar respuesta</Button>
+              <Button type="submit">Registrar movimiento</Button>
             </div>
           </form>
         ) : (
           <p className="mt-5 text-sm leading-6 text-muted-foreground">
-            Levanta la API y carga el seed para ver la primera pregunta demo.
+            Levanta la API y carga el seed para ver la primera quest demo.
           </p>
         )}
       </section>
 
-      <section className="mt-8 rounded-lg border bg-white/70 p-5">
+      <section className="mt-8 rounded-lg border bg-surface p-5">
         <div>
           <p className="text-sm font-medium text-accent">Evidencia reciente</p>
-          <h2 className="mt-2 text-xl font-semibold">Últimas respuestas</h2>
+          <h2 className="mt-2 text-xl font-semibold">Últimos movimientos</h2>
         </div>
 
         {overview?.recentResponses.length ? (
@@ -479,7 +502,7 @@ export default async function DashboardPage({
                   <div>
                     <p className="text-sm leading-6">{response.questionPrompt}</p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Tu respuesta: {response.answerText ?? "Respuesta registrada"}
+                      Tu movimiento: {response.answerText ?? "Movimiento registrado"}
                     </p>
                   </div>
                   <span className="w-fit rounded-md bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
@@ -496,7 +519,7 @@ export default async function DashboardPage({
           </div>
         ) : (
           <p className="mt-5 text-sm leading-6 text-muted-foreground">
-            Cuando respondas una pregunta, aparecerá aquí como parte de tu trayectoria.
+            Cuando recorras una quest, aparecerá aquí como parte de tu trayectoria.
           </p>
         )}
       </section>

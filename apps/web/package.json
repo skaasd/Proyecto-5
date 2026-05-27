@@ -12,6 +12,7 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
     "@project-name/db": "workspace:*",
+    "@project-name/ui": "workspace:*",
     "@radix-ui/react-slot": "^1.1.1",
     "@tanstack/react-query": "^5.62.8",
     "class-variance-authority": "^0.7.1",

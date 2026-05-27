@@ -82,7 +82,7 @@ export default async function ProfilePage() {
       </header>
 
       <section className="mt-8 grid gap-4 md:grid-cols-[1fr_1fr]">
-        <div className="rounded-lg border bg-white/70 p-5">
+        <div className="rounded-lg border bg-surface p-5">
           <div className="flex items-center gap-2">
             <UserCircle size={20} className="text-primary" aria-hidden="true" />
             <h2 className="text-lg font-semibold">Identidad</h2>
@@ -103,7 +103,7 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        <div className="rounded-lg border bg-white/70 p-5">
+        <div className="rounded-lg border bg-surface p-5">
           <div className="flex items-center gap-2">
             <Mail size={20} className="text-primary" aria-hidden="true" />
             <h2 className="text-lg font-semibold">Contacto</h2>
@@ -127,7 +127,7 @@ export default async function ProfilePage() {
         </div>
       </section>
 
-      <section className="mt-8 rounded-lg border bg-white/70 p-5">
+      <section className="mt-8 rounded-lg border bg-surface p-5">
         <div className="flex items-center gap-2">
           <Gauge size={20} className="text-primary" aria-hidden="true" />
           <h2 className="text-lg font-semibold">Ritmo de aprendizaje</h2>
@@ -135,7 +135,7 @@ export default async function ProfilePage() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           <div className="rounded-md border bg-background p-4">
-            <p className="text-sm text-muted-foreground">Preguntas por semana</p>
+            <p className="text-sm text-muted-foreground">Quests por semana</p>
             <p className="mt-3 text-2xl font-semibold">
               {profile?.preferences.questionsPerWeek ?? 0}
             </p>
