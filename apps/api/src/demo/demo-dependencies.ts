@@ -1,0 +1,362 @@
+import type {
+  LearningEvent,
+  LearningEventRepository,
+  LearningOverview,
+  LearningOverviewRepository,
+  QuestionRepository,
+  QuestionWithAnswers,
+  RecordReviewInput,
+  SaveUserResponseInput,
+  SetPauseInput,
+  SpacedRepetitionScheduler,
+  UpdateLearningCadenceInput,
+  User,
+  UserDataExportRepository,
+  UserLearningPreferences,
+  UserPreferencesRepository,
+  UserRepository,
+  UserResponse,
+} from "@project-name/core";
+import {
+  ExportUserData,
+  GetLearningOverview,
+  GetNextQuestion,
+  GetUserPreferences,
+  GetUserProfile,
+  SetLearningPause,
+  SubmitUserResponse,
+  UpdateUserPreferences,
+} from "@project-name/core";
+
+const now = new Date("2026-05-27T12:00:00.000Z");
+
+const demoUser: User = {
+  id: "user_demo",
+  email: "demo@example.com",
+  createdAt: now,
+  updatedAt: now,
+};
+
+const demoQuestions: QuestionWithAnswers[] = [
+  {
+    id: "question_qa_regression_purpose",
+    prompt:
+      "Después de corregir un bug en el login, el equipo quiere revisar que el cambio no haya roto flujos que antes funcionaban. ¿Qué tipo de prueba describe mejor esa intención?",
+    type: "multiple_choice",
+    conceptIds: ["concept_regresion", "concept_cobertura"],
+    concepts: [
+      { id: "concept_regresion", name: "Pruebas de regresión", subtopicId: "subtopic_qa" },
+      { id: "concept_cobertura", name: "Cobertura de pruebas", subtopicId: "subtopic_qa" },
+    ],
+    answers: [
+      {
+        id: "answer_qa_regression_correct",
+        questionId: "question_qa_regression_purpose",
+        text: "Prueba de regresión",
+        isCorrect: true,
+        explanation:
+          "Las pruebas de regresión ayudan a revisar que cambios nuevos no rompan flujos previos.",
+      },
+      {
+        id: "answer_qa_regression_smoke",
+        questionId: "question_qa_regression_purpose",
+        text: "Prueba de humo",
+        isCorrect: false,
+        explanation:
+          "Una prueba de humo da una señal rápida de estabilidad, pero aquí el foco es impacto por cambio.",
+      },
+      {
+        id: "answer_qa_regression_load",
+        questionId: "question_qa_regression_purpose",
+        text: "Prueba de carga",
+        isCorrect: false,
+        explanation:
+          "La prueba de carga observa comportamiento bajo volumen; no es el objetivo central del caso.",
+      },
+    ],
+  },
+  {
+    id: "question_qa_smoke_release",
+    prompt:
+      "Antes de invertir horas en una suite completa, quieres saber si la nueva build al menos permite iniciar sesión, navegar y crear un registro básico. ¿Qué enfoque calza mejor?",
+    type: "multiple_choice",
+    conceptIds: ["concept_humo"],
+    concepts: [{ id: "concept_humo", name: "Pruebas de humo", subtopicId: "subtopic_qa" }],
+    answers: [
+      {
+        id: "answer_qa_smoke_correct",
+        questionId: "question_qa_smoke_release",
+        text: "Ejecutar una prueba de humo",
+        isCorrect: true,
+        explanation:
+          "Es una revisión breve de flujos críticos antes de entrar en pruebas más detalladas.",
+      },
+      {
+        id: "answer_qa_smoke_exploratory",
+        questionId: "question_qa_smoke_release",
+        text: "Hacer solo pruebas exploratorias largas",
+        isCorrect: false,
+        explanation: "La exploración aporta, pero aquí se busca una señal rápida y acotada.",
+      },
+    ],
+  },
+];
+
+type DemoStore = {
+  responses: SaveUserResponseInput[];
+  events: LearningEvent[];
+  reviews: RecordReviewInput[];
+  preferences: UserLearningPreferences;
+};
+
+class DemoUsers implements UserRepository {
+  async findById(id: string): Promise<User | null> {
+    return id === demoUser.id ? demoUser : null;
+  }
+}
+
+class DemoQuestions implements QuestionRepository {
+  constructor(private readonly store: DemoStore) {}
+
+  async findByIdWithAnswers(id: string): Promise<QuestionWithAnswers | null> {
+    return demoQuestions.find((question) => question.id === id) ?? null;
+  }
+
+  async findNextForUser(userId: string): Promise<QuestionWithAnswers | null> {
+    return (
+      demoQuestions.find(
+        (question) =>
+          !this.store.responses.some(
+            (response) => response.userId === userId && response.questionId === question.id,
+          ),
+      ) ??
+      demoQuestions[0] ??
+      null
+    );
+  }
+
+  async saveUserResponse(input: SaveUserResponseInput): Promise<UserResponse> {
+    this.store.responses.push(input);
+
+    return {
+      id: `response_demo_${this.store.responses.length}`,
+      ...input,
+    };
+  }
+}
+
+class DemoEvents implements LearningEventRepository {
+  constructor(private readonly store: DemoStore) {}
+
+  async append(event: LearningEvent): Promise<void> {
+    this.store.events.push(event);
+  }
+}
+
+class DemoScheduler implements SpacedRepetitionScheduler {
+  constructor(private readonly store: DemoStore) {}
+
+  async recordReview(input: RecordReviewInput): Promise<void> {
+    this.store.reviews.push(input);
+  }
+}
+
+class DemoOverview implements LearningOverviewRepository {
+  constructor(private readonly store: DemoStore) {}
+
+  async getByUserId(userId: string): Promise<LearningOverview> {
+    const responses = this.store.responses.filter((response) => response.userId === userId);
+    const conceptIds = new Set<string>();
+
+    for (const response of responses) {
+      const question = demoQuestions.find((candidate) => candidate.id === response.questionId);
+      for (const conceptId of question?.conceptIds ?? []) {
+        conceptIds.add(conceptId);
+      }
+    }
+
+    const nextReviewAt = this.store.reviews
+      .filter((review) => review.userId === userId)
+      .map((review) => {
+        const delayDays = review.isCorrect ? 3 : 1;
+        return new Date(review.reviewedAt.getTime() + delayDays * 24 * 60 * 60 * 1000);
+      })
+      .sort((left, right) => left.getTime() - right.getTime())[0];
+
+    return {
+      userId,
+      totalResponses: responses.length,
+      correctResponses: responses.filter((response) => response.isCorrect).length,
+      conceptsExplored: conceptIds.size,
+      totalTimeMs: responses.reduce((total, response) => total + response.responseTimeMs, 0),
+      lastActivityAt: responses.at(-1)?.submittedAt,
+      nextReviewAt,
+      recentResponses: responses
+        .slice(-5)
+        .reverse()
+        .map((response, index) => {
+          const question = demoQuestions.find((candidate) => candidate.id === response.questionId);
+          const answer = question?.answers.find((candidate) => candidate.id === response.answerId);
+
+          return {
+            id: `response_demo_${responses.length - index}`,
+            questionId: response.questionId,
+            questionPrompt: question?.prompt ?? "Pregunta demo",
+            answerText: answer?.text,
+            isCorrect: response.isCorrect,
+            submittedAt: response.submittedAt,
+          };
+        }),
+    };
+  }
+}
+
+class DemoPreferences implements UserPreferencesRepository {
+  constructor(private readonly store: DemoStore) {}
+
+  async getByUserId(): Promise<UserLearningPreferences> {
+    return this.store.preferences;
+  }
+
+  async setPause(input: SetPauseInput): Promise<UserLearningPreferences> {
+    this.store.preferences = {
+      ...this.store.preferences,
+      isPaused: input.isPaused,
+      pausedUntil: input.pausedUntil,
+    };
+
+    return this.store.preferences;
+  }
+
+  async updateCadence(input: UpdateLearningCadenceInput): Promise<UserLearningPreferences> {
+    this.store.preferences = {
+      ...this.store.preferences,
+      questionsPerWeek: input.questionsPerWeek,
+      tipsPerWeek: input.tipsPerWeek,
+    };
+
+    return this.store.preferences;
+  }
+}
+
+class DemoDataExport implements UserDataExportRepository {
+  constructor(private readonly store: DemoStore) {}
+
+  async exportByUserId(userId: string, exportedAt: Date) {
+    const responses = this.store.responses.filter((response) => response.userId === userId);
+
+    return {
+      exportedAt,
+      user: {
+        id: demoUser.id,
+        email: demoUser.email,
+        createdAt: demoUser.createdAt,
+      },
+      preferences: {
+        questionsPerWeek: this.store.preferences.questionsPerWeek,
+        tipsPerWeek: this.store.preferences.tipsPerWeek,
+        isPaused: this.store.preferences.isPaused,
+        pausedUntil: this.store.preferences.pausedUntil,
+      },
+      responses: responses.map((response, index) => {
+        const question = demoQuestions.find((candidate) => candidate.id === response.questionId);
+        const answer = question?.answers.find((candidate) => candidate.id === response.answerId);
+
+        return {
+          id: `response_demo_${index + 1}`,
+          questionId: response.questionId,
+          questionPrompt: question?.prompt ?? "Pregunta demo",
+          answerId: response.answerId,
+          answerText: answer?.text,
+          isCorrect: response.isCorrect,
+          responseTimeMs: response.responseTimeMs,
+          submittedAt: response.submittedAt,
+        };
+      }),
+      learningEvents: this.store.events
+        .filter((event) => event.userId === userId)
+        .map((event, index) => ({
+          id: `event_demo_${index + 1}`,
+          type: event.kind,
+          occurredAt: event.occurredAt,
+          payload: event.payload,
+        })),
+      spacedRepetitionStates: this.store.reviews
+        .filter((review) => review.userId === userId)
+        .flatMap((review) =>
+          review.conceptIds.map((conceptId) => {
+            const concept = demoQuestions
+              .flatMap((question) => question.concepts)
+              .find((candidate) => candidate.id === conceptId);
+            const delayDays = review.isCorrect ? 3 : 1;
+
+            return {
+              conceptId,
+              conceptName: concept?.name ?? "Concepto demo",
+              stability: review.isCorrect ? 1.5 : 0.5,
+              difficulty: review.isCorrect ? 0.3 : 0.7,
+              reviewCount: 1,
+              lastReviewedAt: review.reviewedAt,
+              nextReviewAt: new Date(review.reviewedAt.getTime() + delayDays * 24 * 60 * 60 * 1000),
+            };
+          }),
+        ),
+    };
+  }
+}
+
+export function buildDemoUseCases() {
+  const store: DemoStore = {
+    responses: [],
+    events: [],
+    reviews: [],
+    preferences: {
+      userId: demoUser.id,
+      questionsPerWeek: 5,
+      tipsPerWeek: 2,
+      isPaused: false,
+    },
+  };
+  const users = new DemoUsers();
+  const questions = new DemoQuestions(store);
+  const preferences = new DemoPreferences(store);
+
+  return {
+    exportUserData: new ExportUserData({
+      users,
+      exports: new DemoDataExport(store),
+      now: () => new Date(),
+    }),
+    getLearningOverview: new GetLearningOverview({
+      users,
+      overview: new DemoOverview(store),
+    }),
+    getUserProfile: new GetUserProfile({
+      users,
+      preferences,
+    }),
+    getUserPreferences: new GetUserPreferences({
+      users,
+      preferences,
+    }),
+    setLearningPause: new SetLearningPause({
+      users,
+      preferences,
+    }),
+    updateUserPreferences: new UpdateUserPreferences({
+      users,
+      preferences,
+    }),
+    getNextQuestion: new GetNextQuestion({
+      users,
+      questions,
+    }),
+    submitUserResponse: new SubmitUserResponse({
+      users,
+      questions,
+      events: new DemoEvents(store),
+      scheduler: new DemoScheduler(store),
+      now: () => new Date(),
+    }),
+  };
+}

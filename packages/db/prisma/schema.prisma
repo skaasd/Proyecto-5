@@ -1,0 +1,332 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+enum ChannelType {
+  EMAIL
+  TELEGRAM
+  WEB
+}
+enum QuestionType {
+  MULTIPLE_CHOICE
+  SHORT_ANSWER
+  MINI_EXERCISE
+  SCENARIO
+  CODE
+}
+enum DifficultyLevel {
+  INITIAL
+  INTERMEDIATE
+  ADVANCED
+}
+enum LearningEventType {
+  USER_REGISTERED
+  PREFERENCES_UPDATED
+  QUESTION_SENT
+  RESPONSE_SUBMITTED
+  FEEDBACK_VIEWED
+  TIP_DELIVERED
+  SESSION_STARTED
+  SESSION_ENDED
+}
+enum TipType {
+  MYTH_VS_REALITY
+  REAL_CASE
+  COMPARISON
+  SHORT_ADVICE
+}
+model User {
+  id                String                  @id @default(cuid())
+  email             String                  @unique
+  emailVerified     DateTime?
+  name              String?
+  image             String?
+  locale            String                  @default("es-CL")
+  timezone          String                  @default("America/Santiago")
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  deletedAt         DateTime?
+  preferences       UserPreferences?
+  channels          Channel[]
+  responses         UserResponse[]
+  learningEvents    LearningEvent[]
+  repetitionStates  SpacedRepetitionState[]
+  tipDeliveries     TipDelivery[]
+  studySessions     StudySession[]
+  timeTracking      TimeTracking[]
+  accounts          Account[]
+  sessions          Session[]
+  @@index([deletedAt])
+}
+model UserPreferences {
+  id                     String        @id @default(cuid())
+  userId                 String        @unique
+  questionsPerWeek       Int           @default(5)
+  tipsPerWeek            Int           @default(2)
+  activeChannels         ChannelType[] @default([EMAIL])
+  preferredWindowStart   String        @default("09:00")
+  preferredWindowEnd     String        @default("18:00")
+  isPaused               Boolean       @default(false)
+  pausedUntil            DateTime?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  user                   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model Channel {
+  id                String      @id @default(cuid())
+  userId            String
+  type              ChannelType
+  address           String
+  isConfirmed       Boolean     @default(false)
+  confirmedAt       DateTime?
+  metadata          Json?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userResponses     UserResponse[]
+  learningEvents    LearningEvent[]
+  tipDeliveries     TipDelivery[]
+  @@unique([type, address])
+  @@index([userId, type])
+}
+model Domain {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  description String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  topics      Topic[]
+  questions   Question[]
+  tips        Tip[]
+}
+model Topic {
+  id          String     @id @default(cuid())
+  domainId    String
+  slug        String
+  name        String
+  description String?
+  order       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  domain      Domain     @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  subtopics   Subtopic[]
+  questions   Question[]
+  @@unique([domainId, slug])
+  @@index([domainId, order])
+}
+model Subtopic {
+  id          String     @id @default(cuid())
+  topicId     String
+  slug        String
+  name        String
+  description String?
+  order       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  topic       Topic      @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  concepts    Concept[]
+  questions   Question[]
+  @@unique([topicId, slug])
+  @@index([topicId, order])
+}
+model Concept {
+  id                 String                  @id @default(cuid())
+  subtopicId         String
+  slug               String
+  name               String
+  description        String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  subtopic           Subtopic                @relation(fields: [subtopicId], references: [id], onDelete: Restrict)
+  questions          Question[]
+  repetitionStates   SpacedRepetitionState[]
+  tips               Tip[]
+  @@unique([subtopicId, slug])
+  @@index([subtopicId])
+}
+model Question {
+  id                String            @id @default(cuid())
+  domainId          String
+  topicId           String
+  subtopicId        String
+  type              QuestionType
+  level             DifficultyLevel
+  prompt            String
+  estimatedTimeSec  Int
+  currentVersion    Int               @default(1)
+  author            String
+  isActive          Boolean           @default(true)
+  retiredAt         DateTime?
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  domain            Domain            @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  topic             Topic             @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  subtopic          Subtopic          @relation(fields: [subtopicId], references: [id], onDelete: Restrict)
+  concepts          Concept[]
+  versions          QuestionVersion[]
+  answers           Answer[]
+  responses         UserResponse[]
+  learningEvents    LearningEvent[]
+  @@index([domainId, level, isActive])
+  @@index([topicId, subtopicId])
+}
+model QuestionVersion {
+  id          String    @id @default(cuid())
+  questionId  String
+  version     Int
+  prompt      String
+  explanation String
+  metadata    Json?
+  author      String
+  createdAt   DateTime  @default(now())
+  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  @@unique([questionId, version])
+}
+model Answer {
+  id            String          @id @default(cuid())
+  questionId    String
+  text          String
+  isCorrect     Boolean         @default(false)
+  explanation   String
+  order         Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  question      Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  userResponses UserResponse[]
+  @@index([questionId, isCorrect])
+}
+model UserResponse {
+  id              String      @id @default(cuid())
+  userId          String
+  questionId      String
+  answerId        String?
+  channelId       String?
+  responseText    String?
+  isCorrect       Boolean
+  responseTimeMs  Int
+  attemptNumber   Int         @default(1)
+  submittedAt     DateTime    @default(now())
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question        Question    @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  answer          Answer?     @relation(fields: [answerId], references: [id], onDelete: SetNull)
+  channel         Channel?    @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  @@index([userId, submittedAt])
+  @@index([questionId, isCorrect])
+}
+model LearningEvent {
+  id          String            @id @default(cuid())
+  userId      String
+  questionId  String?
+  channelId   String?
+  type        LearningEventType
+  payload     Json
+  occurredAt  DateTime          @default(now())
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    Question?         @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  channel     Channel?          @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  @@index([userId, occurredAt])
+  @@index([type, occurredAt])
+}
+model SpacedRepetitionState {
+  id            String    @id @default(cuid())
+  userId        String
+  conceptId     String
+  stability     Float     @default(0)
+  difficulty    Float     @default(0)
+  reviewCount   Int       @default(0)
+  lastReviewedAt DateTime?
+  nextReviewAt  DateTime?
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  concept        Concept   @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  @@unique([userId, conceptId])
+  @@index([nextReviewAt])
+}
+model Tip {
+  id          String        @id @default(cuid())
+  domainId    String
+  type        TipType
+  title       String
+  body        String
+  version     Int           @default(1)
+  author      String
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  domain      Domain        @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  concepts    Concept[]
+  deliveries  TipDelivery[]
+  @@index([domainId, type, isActive])
+}
+model TipDelivery {
+  id          String    @id @default(cuid())
+  tipId       String
+  userId      String
+  channelId   String?
+  deliveredAt DateTime  @default(now())
+  openedAt    DateTime?
+  tip         Tip       @relation(fields: [tipId], references: [id], onDelete: Restrict)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel     Channel?  @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  @@index([userId, deliveredAt])
+  @@unique([tipId, userId, deliveredAt])
+}
+model StudySession {
+  id             String          @id @default(cuid())
+  userId         String
+  startedAt      DateTime        @default(now())
+  endedAt        DateTime?
+  source         ChannelType     @default(WEB)
+  goal           String?
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timeTracking   TimeTracking[]
+  @@index([userId, startedAt])
+}
+model TimeTracking {
+  id             String        @id @default(cuid())
+  userId         String
+  studySessionId String?
+  source         ChannelType
+  durationMs     Int
+  startedAt      DateTime
+  endedAt        DateTime
+  metadata       Json?
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studySession   StudySession? @relation(fields: [studySessionId], references: [id], onDelete: SetNull)
+  @@index([userId, startedAt])
+}
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}

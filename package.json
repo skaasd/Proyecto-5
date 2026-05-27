@@ -1,0 +1,26 @@
+{
+  "name": "project-name",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter ./apps/* dev",
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "build:packages": "pnpm --filter @project-name/core build && pnpm --filter @project-name/db build && pnpm --filter @project-name/shared build && pnpm --filter @project-name/persistence build",
+    "typecheck": "pnpm build:packages && pnpm -r --if-present typecheck",
+    "db:generate": "pnpm --filter @project-name/db prisma:generate",
+    "db:migrate": "pnpm --filter @project-name/db prisma:migrate"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
