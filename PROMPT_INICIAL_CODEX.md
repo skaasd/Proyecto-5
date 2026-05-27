@@ -1,95 +1,113 @@
-# Prompt inicial para Codex
+# Prompt para Codex · Versión 2
 
-> Este es el prompt que se le entrega a Codex (o cualquier agente de generación de código) para inicializar el proyecto. Está diseñado para producir una base sólida, no un prototipo desechable. Si Codex pide aclaraciones, las respuestas están en `PROYECTO_MAESTRO.md`.
+> Este prompt reemplaza el original. Se le entrega a Codex (o cualquier agente de generación de código) junto con el archivo `PROYECTO_MAESTRO.md`. Codex debe leer ambos documentos completos antes de generar nada.
 
 ---
 
 ## Contexto del proyecto
 
-Estoy construyendo una plataforma de aprendizaje y construcción de trayectoria profesional verificable. El primer dominio de validación es QA y automatización de pruebas. Tengo el documento maestro completo del proyecto adjunto (`PROYECTO_MAESTRO.md`) que define visión, principios, requerimientos y arquitectura. Léelo completo antes de proceder. Todo lo que generes debe ser coherente con ese documento.
+Estoy construyendo una plataforma de aprendizaje profesional gamificada. El primer dominio de validación es QA y automatización de pruebas.
 
-El nombre del proyecto está pendiente. Usa `{{PROJECT_NAME}}` como placeholder en todo lugar donde el nombre aparecería (package.json, READMEs, configuración). El placeholder debe ser fácil de reemplazar globalmente después.
+Existe documentación maestra completa adjunta: `PROYECTO_MAESTRO.md`. Léelo completo antes de proceder. Todo lo que generes debe ser coherente con ese documento. Si hay ambigüedad, vuelve al documento maestro.
+
+El nombre del proyecto está pendiente. Usa `{{PROJECT_NAME}}` como placeholder en todo lugar donde aparezca el nombre. Debe ser reemplazable globalmente con un find-and-replace.
+
+**Importante: este proyecto reemplaza una versión anterior generada por ti.** La versión anterior tenía buena arquitectura pero diseño visual y experiencia plana, no lúdica. Esta versión debe sentirse como un juego de progresión profesional (estilo MMO sano), no como una plataforma de e-learning aburrida.
 
 ## Tu rol
 
-Vas a actuar como un equipo multidisciplinario. En cada decisión, considera las perspectivas de:
+Vas a actuar como un equipo multidisciplinario senior. En cada decisión, considera:
 
-- **Arquitecto de software senior:** garantiza que la estructura sea escalable, mantenible y desacoplada.
-- **Backend developer senior con experiencia en TypeScript:** escribe código idiomático, tipado y limpio.
-- **QA Engineer senior:** asegura que todo lo crítico sea testeable y esté testeado.
-- **DevOps engineer:** configura CI/CD, observabilidad y despliegue desde el inicio.
-- **UX engineer:** asegura que cada texto y flujo respete la guía de voz del proyecto.
-- **Product manager pragmático:** evita sobreingeniería, mantiene foco en el MVP.
+- **Arquitecto de software senior:** estructura escalable, mantenible, desacoplada
+- **Backend developer senior con TypeScript:** código idiomático, tipado, limpio
+- **Frontend engineer senior con experiencia en producto premium:** interfaces que se sienten como Linear/Vercel/Cursor pero con alma de juego
+- **Game designer:** mecánicas de progresión sanas (skill trees, quests, XP, niveles, insignias)
+- **UX engineer:** patrones de atención visual (F/Z), carga cognitiva controlada, dopamina por anticipación
+- **QA Engineer senior:** todo lo crítico testeado
+- **DevOps engineer:** CI/CD, observabilidad, despliegue desde el inicio
+- **UX writer:** lenguaje narrativo de aventura, nunca de evaluación escolar
+- **Visual designer:** sistema de diseño profesional pero con momentos lúdicos calibrados
+- **Product manager pragmático:** evitar sobreingeniería, mantener foco en MVP
 
-Cuando haya tensión entre estos roles (por ejemplo, "más tests" vs "entregar rápido"), decide en favor de la calidad sostenible. Este proyecto se construye para durar años, no semanas.
+Cuando haya tensión entre roles, decide en favor de calidad sostenible. Este proyecto se construye para durar años.
 
 ## Principios técnicos no negociables
 
-1. **Arquitectura hexagonal modular.** El paquete `core` no depende de detalles técnicos. Los adaptadores externos son intercambiables.
-2. **TypeScript estricto.** `strict: true` en todos los `tsconfig.json`. Sin `any` salvo justificación documentada.
-3. **Cada decisión arquitectónica relevante genera un ADR** (Architecture Decision Record) en `/docs/adr/`.
-4. **Toda configuración por variables de entorno.** Nada hardcoded. Hay un `.env.example` siempre actualizado.
-5. **Cero secretos en código.** Validación de variables de entorno con Zod al arranque.
-6. **Testabilidad desde el diseño.** Las funciones puras se testean directamente. Las que tienen efectos secundarios se testean inyectando mocks de los puertos.
-7. **Observabilidad desde el día 1.** Logging estructurado con Pino. Métricas básicas. Errores enviables a Sentry.
-8. **Reversibilidad.** Cada decisión técnica debe ser reemplazable en menos de una semana cuando sea necesario.
+1. **Arquitectura hexagonal modular.** Core de negocio sin dependencias técnicas. Adaptadores intercambiables.
+2. **TypeScript estricto.** `strict: true` en todos los tsconfig. Sin `any` salvo justificación documentada.
+3. **Cada decisión arquitectónica genera un ADR** en `/docs/adr/`.
+4. **Toda configuración por variables de entorno.** Nada hardcoded. `.env.example` siempre actualizado.
+5. **Cero secretos en código.** Validación de env vars con Zod al arranque.
+6. **Testabilidad desde el diseño.** Funciones puras testeadas directamente. Side effects testeados con mocks.
+7. **Observabilidad desde el día 1.** Pino estructurado, métricas básicas, Sentry.
+8. **Reversibilidad.** Cada decisión técnica reemplazable en menos de una semana.
+
+## Principios de diseño visual no negociables
+
+1. **Profesional + lúdico.** Disciplina visual tipo Linear, mecánicas tipo MMO sano. Cero infantilismo.
+2. **Sistema de color estricto.** Solo los hex definidos en el documento maestro. Cero colores arbitrarios.
+3. **Tipografía disciplinada.** Una sola fuente sans system stack. Tres tamaños base. Letter-spacing negativo en headings.
+4. **Sentence case siempre.** Cero Title Case, cero ALL CAPS (excepto badges con propósito).
+5. **Espaciados matemáticos.** Múltiplos de 4px. Cero números arbitrarios.
+6. **Cero gradientes en fondos.** Sí gradientes sutiles en insignias y elementos celebratorios.
+7. **Animaciones con propósito.** Cada animación debe comunicar algo (progreso, atención, celebración).
+8. **Densidad informativa balanceada.** Máximo 7 chunks visibles por sección.
+
+## Principios de lenguaje no negociables
+
+1. **Cero lenguaje escolar.** Nunca "examen", "prueba", "test", "lección", "reprobaste".
+2. **Lenguaje de aventura aplicado profesionalmente.** "Misión", "quest", "capítulo", "movimiento", "desbloqueaste".
+3. **Cero presión.** "Sin apuro", "cuando estés listo", "a tu ritmo".
+4. **Cero comparación competitiva.** Nunca rankings entre usuarios.
+5. **Narrativa por encima de información seca.** En vez de "Tiempo: 4h 23m" → "Llevas 4h 23min en tu observatorio".
 
 ## Stack obligatorio
 
-- **Runtime:** Node.js 20+ LTS
-- **Lenguaje:** TypeScript estricto
-- **Backend HTTP:** Fastify
-- **Frontend:** Next.js 14+ con App Router
-- **ORM:** Prisma
-- **DB:** PostgreSQL (configurada para Neon en producción, Postgres local en Docker para desarrollo)
-- **Caché y colas:** Redis con BullMQ
-- **Validación:** Zod
-- **Testing:** Vitest
-- **Linting/Formatting:** Biome
-- **Estilos frontend:** Tailwind CSS + Shadcn/ui
-- **Estado frontend:** TanStack Query (server) + Zustand (client)
-- **Auth:** Auth.js (NextAuth) con magic links y Google OAuth
-- **Bot Telegram:** Telegraf
-- **Email:** Resend
-- **Monorepo:** pnpm workspaces
-- **CI/CD:** GitHub Actions
-- **Logs:** Pino
+Ya definido en el documento maestro. Resumen rápido:
+
+- Node.js 20+ LTS + TypeScript estricto
+- Fastify backend, Next.js 14+ frontend
+- Prisma + PostgreSQL (Neon en producción)
+- Redis + BullMQ (Upstash en producción)
+- Zod, Vitest, Biome
+- Tailwind + Shadcn/ui base + componentes propios para lo lúdico
+- Framer Motion (crítico para sensación de juego)
+- D3.js o React Flow para skill tree visual
+- TanStack Query + Zustand
+- Auth.js con magic links + Google OAuth
+- Telegraf para Telegram, Resend para email
+- pnpm workspaces, GitHub Actions, Sentry, Pino
 
 ## Estructura objetivo del repositorio
 
 ```
 {{PROJECT_NAME}}/
-├── .github/
-│   └── workflows/                # CI/CD
+├── .github/workflows/
 ├── apps/
 │   ├── web/                      # Next.js
-│   ├── api/                      # Fastify API
-│   └── worker/                   # Workers BullMQ
+│   ├── api/                      # Fastify
+│   └── worker/                   # BullMQ workers
 ├── packages/
-│   ├── core/                     # Lógica de negocio pura
+│   ├── core/
 │   │   ├── src/
 │   │   │   ├── domain/
 │   │   │   ├── use-cases/
 │   │   │   └── ports/
-│   │   └── package.json
 │   ├── adapters/
 │   │   ├── persistence/
 │   │   ├── messaging/
 │   │   └── ai/
-│   ├── shared/                   # Tipos, utilities compartidos
-│   └── db/                       # Schema Prisma, migraciones
+│   ├── shared/
+│   ├── db/
+│   └── ui/                       # Componentes UI compartidos
 ├── docs/
 │   ├── adr/
-│   │   ├── 0001-arquitectura-hexagonal.md
-│   │   ├── 0002-monorepo-pnpm.md
-│   │   ├── 0003-fastify-sobre-express.md
-│   │   ├── 0004-prisma-como-orm.md
-│   │   ├── 0005-fsrs-para-spaced-repetition.md
-│   │   └── 0006-telegraf-para-bot.md
 │   ├── voice-guide.md
+│   ├── visual-system.md
 │   ├── content-guidelines.md
+│   ├── badge-design-guide.md
 │   └── api.md
-├── docker-compose.yml            # Postgres + Redis local
+├── docker-compose.yml
 ├── .env.example
 ├── biome.json
 ├── package.json
@@ -101,132 +119,289 @@ Cuando haya tensión entre estos roles (por ejemplo, "más tests" vs "entregar r
 
 ## Lo que debes generar (entrega 1)
 
-Esta es la primera entrega. NO intentes construir toda la funcionalidad. Construye solo la base sólida sobre la que iremos iterando.
+Esta es la primera entrega. NO construyas toda la funcionalidad. Construye base sólida sobre la que iteraremos.
 
 ### 1. Inicialización del monorepo
-- `package.json` raíz con scripts útiles (`dev`, `build`, `test`, `lint`, `typecheck`).
-- `pnpm-workspace.yaml` con los workspaces correctos.
-- `tsconfig.base.json` con configuración estricta compartida.
-- `biome.json` con reglas configuradas.
-- `.gitignore` apropiado.
-- `.env.example` con todas las variables necesarias documentadas.
+
+- `package.json` raíz con scripts: `dev`, `build`, `test`, `lint`, `typecheck`, `db:migrate`, `db:seed`
+- `pnpm-workspace.yaml` con workspaces correctos
+- `tsconfig.base.json` con configuración estricta compartida
+- `biome.json` con reglas
+- `.gitignore` apropiado
+- `.env.example` con todas las variables documentadas
 
 ### 2. Documentación inicial
-- `README.md` que explique el proyecto a alto nivel, cómo levantarlo localmente y cómo contribuir.
-- ADRs iniciales (mínimo los 6 listados arriba), cada uno siguiendo el formato estándar: contexto, decisión, alternativas consideradas, consecuencias.
-- `docs/voice-guide.md` con la guía completa de tono y lenguaje, basada en la sección 9 del documento maestro.
-- `docs/content-guidelines.md` con cómo se estructura el contenido (preguntas, tips).
 
-### 3. Esquema de base de datos completo (Prisma)
-Diseña el schema completo cubriendo:
-- **Users:** id, email, configuración de preferencias, fechas de creación y actualización.
-- **UserPreferences:** frecuencia de envío, canales activos, ventanas horarias preferidas, pausa.
-- **Channels:** Telegram chat IDs, email confirmations, etc., relacionados al usuario.
-- **Domains:** categorías de aprendizaje (ej: "QA", "Automatización", "SQL").
-- **Topics y Subtopics:** jerarquía dentro de cada dominio.
-- **Concepts:** unidades atómicas de conocimiento dentro de un subtopic.
-- **Questions:** con metadata rica (tipo, nivel, conceptos involucrados, tiempo estimado, versión, autor).
-- **QuestionVersions:** historial de versiones (nunca borramos contenido).
-- **Answers:** respuestas correctas, distractores, explicaciones.
-- **UserResponses:** respuestas del usuario, con tiempo, intentos, canal de respuesta.
-- **LearningEvents:** event sourcing parcial. Cada interacción significativa es un evento inmutable.
-- **SpacedRepetitionStates:** estado FSRS por usuario y concepto (stability, difficulty, last review, next review).
-- **Tips:** estructura para tips por email con tipo, dominio, conceptos relacionados.
-- **TipDeliveries:** registro de qué tip se envió a quién y cuándo.
-- **Studysessions:** sesiones voluntarias de práctica en la plataforma web.
-- **TimeTracking:** tiempo real invertido (calculado, no auto-reportado).
+- `README.md` claro: qué es, cómo levantarlo, cómo contribuir
+- ADRs iniciales mínimos:
+  - `0001-arquitectura-hexagonal.md`
+  - `0002-monorepo-pnpm.md`
+  - `0003-fastify-sobre-express.md`
+  - `0004-prisma-como-orm.md`
+  - `0005-fsrs-para-spaced-repetition.md`
+  - `0006-telegraf-para-bot.md`
+  - `0007-framer-motion-para-experiencia-de-juego.md`
+  - `0008-sistema-xp-niveles-monedas-insignias.md`
+- `docs/voice-guide.md` con la guía completa de la sección 14 del documento maestro
+- `docs/visual-system.md` con el sistema de diseño de la sección 13
+- `docs/content-guidelines.md` con cómo escribir quests, misiones y tips
+- `docs/badge-design-guide.md` con cómo diseñar insignias
 
-Incluye índices apropiados, relaciones bien tipadas, y comentarios en el schema explicando decisiones no obvias.
+### 3. Schema de base de datos completo (Prisma)
+
+Diseña el schema cubriendo todo el modelo gamificado:
+
+**Identidad y preferencias:**
+- `User`: id, email, displayName, level, totalXP, coins, createdAt, updatedAt
+- `UserPreferences`: questFrequency, channels, timeWindows, paused, mercadoEnabled
+- `Channel`: telegram chat IDs, email confirmations
+
+**Paths y skill tree:**
+- `Path`: dominio temático (ej: "QA Path"). Tiene topics y conceptos
+- `Topic`: agrupación dentro de un path
+- `Concept`: unidad atómica. Tiene niveles I-V
+- `ConceptConnection`: relaciones entre conceptos para el skill tree
+- `UserConceptProgress`: nivel actual del usuario en cada concepto, XP en ese concepto, fechas
+
+**Sistema de quests:**
+- `Quest`: pregunta o desafío. Tipo (daily, weekly, side), dificultad, conceptos asociados, XP otorgable
+- `QuestVersion`: historial inmutable
+- `QuestOption`: opciones de respuesta (para quests con elecciones)
+- `Mission`: misión narrativa larga. Tiene capítulos
+- `MissionChapter`: cada capítulo de una misión
+- `UserQuestAttempt`: cada intento de respuesta
+- `UserMissionProgress`: progreso del usuario en misiones
+
+**Spaced repetition:**
+- `SpacedRepetitionState`: estado FSRS por usuario y concepto (stability, difficulty, lastReview, nextReview)
+
+**Sistema de juego:**
+- `Badge`: insignia. Visual config, condición de desbloqueo, rareza
+- `UserBadge`: insignias desbloqueadas por usuario
+- `XPEvent`: cada otorgamiento de XP con razón
+- `CoinTransaction`: cada movimiento de monedas
+
+**Eventos:**
+- `LearningEvent`: event sourcing. Cada interacción significativa como evento inmutable
+
+**Portafolio:**
+- `PortfolioEntry`: entradas auto-generadas del portafolio del usuario
+- `Reflection`: reflexiones escritas por el usuario
+- `ShareLink`: enlaces compartibles con config de privacidad
+
+**Contenido pasivo:**
+- `Tip`: tip estructurado (tipo, dominio, conceptos)
+- `TipDelivery`: registro de envíos
+
+**Mercado:**
+- `JobOffer`: oferta de empleo curada manualmente
+- `JobOfferSkill`: habilidades requeridas por la oferta
+- `CompanyType`: tipo anonimizado (banca, fintech, retail)
+
+**Comunidad:**
+- `UserFollow`: seguimientos opcionales entre usuarios (sin números públicos)
+
+Incluye índices apropiados, relaciones bien tipadas, comentarios en el schema explicando decisiones no obvias.
+
+Crea seed inicial con:
+- 1 Path "QA Path"
+- 5-8 conceptos básicos de QA con sus conexiones
+- 15-20 quests de ejemplo distribuidas en los conceptos
+- 1 misión narrativa completa de ejemplo con 4 capítulos
+- 10 badges iniciales con visuales placeholder
+- Tipos de empresa básicos
 
 ### 4. Paquete `core` esqueleto
-- Estructura de carpetas (`domain/`, `use-cases/`, `ports/`).
-- Entidades principales como clases o tipos: `User`, `Question`, `Answer`, `LearningEvent`, `Concept`.
-- Puertos (interfaces) iniciales:
+
+- Estructura `domain/`, `use-cases/`, `ports/`
+- Entidades principales: `User`, `Concept`, `Quest`, `Mission`, `Badge`, `XPEvent`, `LearningEvent`
+- Puertos iniciales:
   - `UserRepository`
-  - `QuestionRepository`
+  - `QuestRepository`
+  - `MissionRepository`
+  - `BadgeRepository`
   - `LearningEventRepository`
   - `MessagingChannel`
   - `EmailService`
   - `SpacedRepetitionScheduler`
-- Un caso de uso ejemplo completo (con tests): `SubmitUserResponse`. Que demuestre cómo se conectan domain, ports y use-cases sin tocar nada externo.
+- Casos de uso ejemplo con tests:
+  - `SubmitQuestResponse`
+  - `AwardXP`
+  - `CheckBadgeUnlocks`
+  - `AdvanceMissionChapter`
 
 ### 5. Paquete `adapters/persistence`
-- Implementación de los repositorios usando Prisma.
-- Inyección via constructor para que sean reemplazables.
 
-### 6. App `api`
-- Fastify configurado con TypeScript.
-- Validación de variables de entorno con Zod al arranque.
-- Logging con Pino estructurado.
-- Health check endpoint.
-- Manejo global de errores.
-- Estructura de rutas modular preparada para crecer.
-- Un endpoint ejemplo funcional: `POST /api/responses` que use el caso de uso `SubmitUserResponse`.
+Implementación de repositorios con Prisma. Inyección via constructor.
 
-### 7. App `worker`
-- Worker de BullMQ configurado.
-- Conexión a Redis con validación.
-- Un job ejemplo: `SendQuestionJob` (que aún no hace nada útil, solo demuestra estructura).
-- Sistema de scheduling preparado para que un día agreguemos "enviar pregunta a usuario X a las Y horas".
+### 6. Paquete `ui` (componentes compartidos)
 
-### 8. App `web` esqueleto
-- Next.js 14 con App Router configurado.
-- Tailwind y Shadcn/ui instalados.
-- Layout base con tipografía cálida y paleta calmada (sugerencia: tonos crema, verde oliva suave, marrón cálido).
-- Página de inicio con explicación honesta del proyecto.
-- Página de login con magic link (Auth.js configurado).
-- Página de dashboard placeholder con estructura preparada.
+Componentes lúdicos reusables:
+- `XPBar` con animación de llenado
+- `LevelBadge` con número de nivel y rareza visual
+- `CoinDisplay` con ícono y número
+- `BadgeIcon` componente para mostrar insignias
+- `SkillNode` para nodos del skill tree
+- `QuestCard` para tarjeta de quest
+- `ConstanciaIndicator` (NO streak, sin ansiedad)
 
-### 9. Docker para desarrollo local
-- `docker-compose.yml` que levante PostgreSQL y Redis localmente.
-- Documentación clara en README sobre cómo arrancar todo.
+Cada componente con animaciones Framer Motion apropiadas y tests visuales básicos.
 
-### 10. CI/CD básico
-- Workflow de GitHub Actions que en cada push corra: typecheck, lint, tests, build.
-- Separación clara entre PR checks y deploys.
+### 7. App `api` (Fastify)
 
-### 11. Tests
-- Vitest configurado en todos los paquetes.
-- Mínimo: tests del caso de uso `SubmitUserResponse` con mocks de los puertos.
-- Mínimo: un test de integración del endpoint `POST /api/responses`.
+- Fastify con TypeScript
+- Validación de env vars con Zod
+- Pino estructurado
+- Health check endpoint
+- Manejo global de errores
+- Rutas modulares preparadas para crecer
+- Endpoints iniciales funcionales:
+  - `POST /api/quests/:id/responses` usando `SubmitQuestResponse`
+  - `GET /api/users/me/dashboard` que devuelve datos del dashboard
+  - `GET /api/users/me/skill-tree`
+  - `GET /api/users/me/badges`
+  - `POST /api/missions/:id/chapters/:n/responses`
+
+### 8. App `worker` (BullMQ)
+
+- Worker configurado con conexión a Redis validada
+- Jobs iniciales:
+  - `SendDailyQuestJob` (estructura, sin lógica completa)
+  - `CheckBadgeUnlocksJob`
+  - `UpdateSkillTreeJob`
+- Sistema de scheduling preparado
+
+### 9. App `web` (Next.js)
+
+CRÍTICO: este es el lugar donde se siente el juego. Debe verse profesional pero lúdico.
+
+**Páginas iniciales:**
+- `/` — Landing con propósito claro, tono narrativo
+- `/login` — Magic link + Google OAuth
+- `/dashboard` — Dashboard tipo MMO con:
+  - Header con nivel, XP bar, monedas, constancia
+  - Banner de Quest Activa principal con animación shimmer
+  - 3 tarjetas de quests (daily, weekly, side)
+  - Skill tree visual interactivo
+  - Grilla de insignias coleccionables (8 visibles + slots bloqueados)
+  - Compañeros de ruta
+- `/mission/:id` — Pantalla de misión narrativa con capítulos
+- `/profile` — Configuración personal
+- `/portfolio/:slug` — Portafolio público compartible
+- `/skill-tree` — Vista completa del skill tree expandido
+- `/badges` — Galería completa de insignias
+
+**Componentes críticos a implementar:**
+- `SkillTreeVisual`: visualización con nodos coloreados por estado, animación pulse en nodo activo, conexiones entre nodos. Usar D3 o React Flow.
+- `QuestSceneCard`: la "escena" de una quest con narrativa, cliente, contexto, opciones como movimientos estratégicos
+- `BadgeGrid`: grilla de insignias con gradientes únicos, slots bloqueados con curiosidad
+- `MissionChapterFlow`: navegación por capítulos de una misión
+
+**Sistema de diseño implementado:**
+- Variables CSS con paleta exacta del documento maestro
+- Componentes base de Shadcn/ui customizados
+- Framer Motion configurado con easings personalizados
+- Tema oscuro como default (sin toggle inicial)
+
+### 10. Docker para desarrollo local
+
+- `docker-compose.yml` con PostgreSQL y Redis
+- Documentación clara en README
+
+### 11. CI/CD básico
+
+GitHub Actions con:
+- Lint + typecheck + tests en cada PR
+- Build en main
+- Deploy preview en Vercel (frontend) automático
+
+### 12. Tests
+
+Mínimo:
+- Tests unitarios del caso de uso `SubmitQuestResponse` con mocks
+- Tests del caso de uso `AwardXP` con escenarios variados
+- Tests del caso de uso `CheckBadgeUnlocks`
+- Test de integración del endpoint `POST /api/quests/:id/responses`
+- Tests visuales básicos de componentes UI clave
 
 ## Cómo entregar
 
-Genera todo el código y la estructura. Para cada archivo creado, asegúrate de que:
+Genera todo el código y la estructura. Para cada archivo:
+- TypeScript estricto
+- Pasa Biome
+- Comentarios solo donde aportan valor
+- Sigue la guía de voz en textos visibles
+- Coherente con el resto del proyecto
 
-- Tenga TypeScript estricto.
-- Pase el linter (Biome).
-- Tenga comentarios solo donde aporten valor (no comentes lo obvio).
-- Siga la guía de voz cuando contenga texto visible al usuario.
-- Sea coherente con el resto del proyecto.
+Al final, entrega resumen de:
+1. Qué archivos generaste
+2. Decisiones tomadas no explícitas en este prompt (con justificación)
+3. Cómo levantar el proyecto localmente paso a paso
+4. Qué falta para considerar la fase 0 completa
+5. Qué deberíamos hacer en la siguiente iteración
+6. Screenshots/descripciones de cómo se ven las pantallas principales
 
-Al final, entrega un resumen de:
-1. Qué archivos generaste.
-2. Qué decisiones tomaste que no estaban explícitas en este prompt (con justificación).
-3. Cómo levantar el proyecto localmente paso a paso.
-4. Qué falta para considerar la fase 0 completa.
-5. Qué deberíamos hacer en la siguiente iteración.
+## Restricciones absolutas
 
-## Restricciones importantes
+**No agregues features fuera del scope.** Si te tienta hacer algo más, lista la idea en el resumen pero no lo hagas.
 
-- **No agregues features fuera del scope.** Si te tienta hacer algo más, no lo hagas. Lista la idea en el resumen final.
-- **No uses bibliotecas no listadas** sin justificación documentada en un ADR.
-- **No copies código de tutoriales genéricos.** Este proyecto tiene identidad propia.
-- **No agregues complejidad innecesaria.** Si algo puede ser simple, que sea simple.
-- **No instales dependencias deprecated o sin mantenimiento activo.**
-- **No uses Express, Mongoose, Sequelize, ESLint+Prettier o Jest.** Tenemos alternativas modernas mejores ya elegidas.
+**No uses bibliotecas no listadas** sin justificación documentada en un ADR.
+
+**No copies código genérico.** Este proyecto tiene identidad propia (gamificado profesional).
+
+**No agregues complejidad innecesaria.** Si algo puede ser simple, que sea simple.
+
+**No uses:**
+- Express (usar Fastify)
+- Mongoose o Sequelize (usar Prisma)
+- ESLint + Prettier (usar Biome)
+- Jest (usar Vitest)
+- CSS-in-JS pesado (usar Tailwind)
+- Material UI o Ant Design (usar Shadcn/ui)
+- Redux (usar TanStack Query + Zustand)
+- Comic Sans o cualquier fuente decorativa
+- Emojis decorativos en UI (sí íconos Tabler/Lucide)
 
 ## Lo que NO quiero ver
 
-- Sistema de autenticación con contraseñas.
-- Lógica de negocio en controllers HTTP.
-- SQL crudo (todo vía Prisma).
-- Tipos `any` sin justificación.
-- Strings hardcoded de configuración.
-- Archivos de más de 300 líneas sin razón.
-- Documentación faltante para decisiones no obvias.
-- Tests que solo testean implementación, no comportamiento.
+- Sistema de autenticación con contraseñas
+- Lógica de negocio en controllers HTTP
+- SQL crudo (todo vía Prisma)
+- Tipos `any` sin justificación
+- Strings hardcoded de configuración
+- Archivos de más de 300 líneas sin razón documentada
+- Documentación faltante para decisiones no obvias
+- Tests que solo testean implementación, no comportamiento
+- Diseño plano sin animaciones donde deberían haber
+- Animaciones excesivas o agresivas
+- Lenguaje escolar ("examen", "prueba", "test", "reprobaste")
+- Rankings comparativos entre usuarios
+- Streaks con ansiedad de pérdida
+- Variable rewards manipulativos
+- FOMO o urgencia tóxica
+
+## El test final antes de entregar
+
+Antes de considerar terminada esta entrega, asegúrate:
+
+1. ¿Un usuario podría confundir esto con una plataforma de e-learning genérica? Si sí, falta personalidad lúdica.
+
+2. ¿El dashboard se ve como un dashboard de banco? Si sí, falta narrativa visual.
+
+3. ¿Las quests se sienten como tests escolares? Si sí, falta frame de aventura.
+
+4. ¿Las insignias se ven genéricas? Si sí, falta diseño distintivo por insignia.
+
+5. ¿La densidad informativa abruma? Si sí, falta aplicar regla de Miller.
+
+6. ¿Falta movimiento en pantalla? Si sí, faltan animaciones de Framer Motion en momentos clave.
+
+7. ¿Algún texto suena a profesor evaluando? Si sí, falta aplicar guía de voz.
+
+Si todos esos checks pasan, la entrega está lista.
 
 ## Cierre
 
-Procede con la generación. Si encuentras ambigüedad genuina, opta por la decisión más conservadora y documéntala en un ADR para revisarla después. Recuerda: esto es el cimiento del proyecto, no el edificio completo. Hazlo sólido, simple y honesto.
+Procede con la generación. Lee primero el documento maestro completo. Si encuentras ambigüedad genuina, opta por la decisión más conservadora y documéntala en un ADR para revisarla después.
+
+Esto es el cimiento del proyecto, no el edificio completo. Hazlo sólido, simple, honesto, y sobre todo: **hazlo que se sienta como un juego de progresión profesional, no como una plataforma de estudio**.
