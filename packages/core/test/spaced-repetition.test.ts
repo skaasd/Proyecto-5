@@ -50,4 +50,18 @@ describe("scheduleNextReview", () => {
       nextReviewAt: new Date("2026-05-28T12:00:00.000Z"),
     });
   });
+
+  it("limita intervalos enormes a un horizonte operativo", () => {
+    const result = scheduleNextReview({
+      reviewedAt,
+      isCorrect: true,
+      previousState: {
+        stability: 50_000,
+        difficulty: 1,
+        reviewCount: 200,
+      },
+    });
+
+    expect(result.nextReviewAt).toEqual(new Date("2027-05-27T12:00:00.000Z"));
+  });
 });

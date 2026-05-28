@@ -1,4 +1,6 @@
 import type { QuestStep, SkillTreeEdge, SkillTreeNode } from "@project-name/ui";
+import { buildUserApiHeaders, getApiBaseUrl } from "./api-client";
+import type { CurrentUser } from "./current-user";
 
 /*
   Mock data del dashboard.
@@ -19,6 +21,7 @@ export type DashboardData = {
     currentXp: number;
     currentLevelXp: number;
     nextLevelXp: number;
+    isPaused?: boolean;
   };
   activeQuest: {
     title: string;
@@ -54,6 +57,99 @@ export type DashboardData = {
   companionsNewThisWeek: number;
 };
 
+type UserProfileResponse = {
+  profile: {
+    email: string;
+    createdAt: string;
+    preferences: {
+      isPaused: boolean;
+    };
+  };
+};
+
+type LearningOverviewResponse = {
+  overview: {
+    totalResponses: number;
+    correctResponses: number;
+    conceptsExplored: number;
+    totalTimeMs: number;
+    lastActivityAt?: string;
+    recentResponses: Array<{
+      questionPrompt: string;
+      outcome: "expected" | "review";
+      submittedAt: string;
+    }>;
+  };
+};
+
+type GameProfileResponse = {
+  gameProfile: {
+    level: number;
+    totalXp: number;
+    coins: number;
+    constanciaDays: number;
+    currentLevelXp: number;
+    nextLevelXp: number;
+    badges: Array<{
+      title: string;
+      rarity: "common" | "rare" | "epic";
+      isLocked?: boolean;
+    }>;
+    skillNodes: Array<{
+      label: string;
+      level: string;
+      state: "mastered" | "active" | "locked";
+    }>;
+  };
+};
+
+type NextQuestionResponse = {
+  question: {
+    id: string;
+    prompt: string;
+    concepts: Array<{ id: string; name: string }>;
+    answers: Array<{ id: string; text: string }>;
+  } | null;
+};
+
+async function fetchUserJson<T>(currentUser: CurrentUser, path: string): Promise<T | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}${path}`, {
+      cache: "no-store",
+      headers: buildUserApiHeaders(currentUser),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+export async function getDashboardDataForUser(currentUser: CurrentUser): Promise<DashboardData> {
+  const [profileResponse, overviewResponse, gameProfileResponse, nextQuestionResponse] =
+    await Promise.all([
+      fetchUserJson<UserProfileResponse>(currentUser, `/api/users/${currentUser.id}/profile`),
+      fetchUserJson<LearningOverviewResponse>(currentUser, `/api/users/${currentUser.id}/overview`),
+      fetchUserJson<GameProfileResponse>(currentUser, `/api/users/${currentUser.id}/game-profile`),
+      fetchUserJson<NextQuestionResponse>(
+        currentUser,
+        `/api/questions/next?userId=${encodeURIComponent(currentUser.id)}`,
+      ),
+    ]);
+
+  return buildDashboardData({
+    currentUser,
+    profile: profileResponse?.profile,
+    overview: overviewResponse?.overview,
+    gameProfile: gameProfileResponse?.gameProfile,
+    nextQuestion: nextQuestionResponse?.question,
+  });
+}
+
 export function getDashboardData(): DashboardData {
   return {
     user: {
@@ -67,6 +163,7 @@ export function getDashboardData(): DashboardData {
       currentXp: 2340,
       currentLevelXp: 0,
       nextLevelXp: 3500,
+      isPaused: false,
     },
     activeQuest: {
       title: "Dominar Tipos de Pruebas",
@@ -185,5 +282,161 @@ export function getDashboardData(): DashboardData {
       },
     ],
     companionsNewThisWeek: 24,
+  };
+}
+
+function buildDashboardData(input: {
+  currentUser: CurrentUser;
+  profile?: UserProfileResponse["profile"];
+  overview?: LearningOverviewResponse["overview"];
+  gameProfile?: GameProfileResponse["gameProfile"];
+  nextQuestion?: NonNullable<NextQuestionResponse["question"]> | null;
+}): DashboardData {
+  const fallback = getDashboardData();
+  const name =
+    input.currentUser.name ??
+    input.currentUser.email?.split("@")[0] ??
+    input.profile?.email.split("@")[0] ??
+    fallback.user.name;
+  const initial = name.trim().charAt(0).toUpperCase() || fallback.user.initial;
+  const totalResponses = input.overview?.totalResponses ?? 0;
+  const conceptsExplored = input.overview?.conceptsExplored ?? 0;
+  const nextConcept = input.nextQuestion?.concepts[0]?.name ?? "Pruebas de humo";
+  const completedSteps = Math.min(4, Math.max(1, conceptsExplored));
+
+  return {
+    ...fallback,
+    user: {
+      ...fallback.user,
+      name,
+      initial,
+      level: input.gameProfile?.level ?? fallback.user.level,
+      greeting: input.currentUser.isDemo ? "Modo demo activo" : fallback.user.greeting,
+      lastVisitNote: buildLastVisitNote(input.overview?.lastActivityAt, nextConcept),
+      coins: input.gameProfile?.coins ?? fallback.user.coins,
+      constanciaDays: input.gameProfile?.constanciaDays ?? fallback.user.constanciaDays,
+      currentXp: input.gameProfile?.totalXp ?? fallback.user.currentXp,
+      currentLevelXp: input.gameProfile?.currentLevelXp ?? fallback.user.currentLevelXp,
+      nextLevelXp: input.gameProfile?.nextLevelXp ?? fallback.user.nextLevelXp,
+      isPaused: input.profile?.preferences.isPaused ?? fallback.user.isPaused,
+    },
+    activeQuest: {
+      title: input.nextQuestion ? `Resolver: ${nextConcept}` : fallback.activeQuest.title,
+      description: input.nextQuestion?.prompt ?? fallback.activeQuest.description,
+      steps: buildQuestSteps(completedSteps),
+      rewardText: "+30 XP · +10 monedas",
+      unlockText:
+        totalResponses > 0
+          ? `${totalResponses} movimientos registrados`
+          : "Primer movimiento de la ruta",
+    },
+    quests: [
+      {
+        type: "daily",
+        typeLabel: "DIARIA",
+        title: input.nextQuestion?.prompt ?? fallback.quests[0]?.title ?? "Movimiento sugerido",
+        meta: "3 min · +30 XP",
+      },
+      {
+        type: "weekly",
+        typeLabel: "SEMANAL",
+        title: "Convertir decisiones en evidencia de portafolio",
+        meta: `${conceptsExplored} conceptos · ${totalResponses} movimientos`,
+      },
+      {
+        type: "side",
+        typeLabel: "EXPLORA",
+        title: `Insight: ${nextConcept}`,
+        meta: "2 min · +15 XP",
+      },
+    ],
+    skillTree: buildSkillTreeFromGameProfile(input.gameProfile, fallback),
+    badges: buildBadges(input.gameProfile, fallback),
+  };
+}
+
+function buildLastVisitNote(lastActivityAt: string | undefined, nextConcept: string): string {
+  if (!lastActivityAt) {
+    return `Listo para explorar ${nextConcept}`;
+  }
+
+  return `Ultimo movimiento registrado: ${new Date(lastActivityAt).toLocaleDateString("es-CL")} · ${nextConcept}`;
+}
+
+function buildQuestSteps(completedSteps: number): QuestStep[] {
+  const labels = ["Casos", "Tipos", "Regresion", "Humo", "Exploratorias", ""];
+
+  return labels.map((label, index) => {
+    if (index < completedSteps) {
+      return { label, state: "done" };
+    }
+
+    if (index === completedSteps) {
+      return { label, state: "active" };
+    }
+
+    return { label, state: "locked" };
+  });
+}
+
+function buildSkillTreeFromGameProfile(
+  gameProfile: GameProfileResponse["gameProfile"] | undefined,
+  fallback: DashboardData,
+): DashboardData["skillTree"] {
+  if (!gameProfile?.skillNodes.length) {
+    return fallback.skillTree;
+  }
+
+  const nodes = fallback.skillTree.nodes.map((node) => {
+    const match = gameProfile.skillNodes.find((skill) =>
+      skill.label.toLowerCase().includes(node.label.toLowerCase().split(" ")[0] ?? node.label),
+    );
+
+    if (!match) {
+      return node;
+    }
+
+    return {
+      ...node,
+      label: match.label,
+      level: match.level.replace("Nivel ", ""),
+      state: match.state === "active" ? "in-progress" : match.state,
+      hint: match.state === "active" ? "en curso" : node.hint,
+    } satisfies SkillTreeNode;
+  });
+
+  return {
+    ...fallback.skillTree,
+    nodes,
+  };
+}
+
+function buildBadges(
+  gameProfile: GameProfileResponse["gameProfile"] | undefined,
+  fallback: DashboardData,
+): DashboardData["badges"] {
+  if (!gameProfile?.badges.length) {
+    return fallback.badges;
+  }
+
+  const gradients = {
+    common: "linear-gradient(135deg,#4ADE80,#10B981)",
+    rare: "linear-gradient(135deg,#6366F1,#4F46E5)",
+    epic: "linear-gradient(135deg,#EC4899,#BE185D)",
+  } as const;
+  const unlocked = gameProfile.badges
+    .filter((badge) => !badge.isLocked)
+    .map((badge, index) => ({
+      icon: ["shield", "target", "flame", "bulb"][index % 4] ?? "shield",
+      label: badge.title.toUpperCase(),
+      gradient: gradients[badge.rarity],
+    }));
+  const lockedSlots = Math.max(0, gameProfile.badges.length - unlocked.length);
+
+  return {
+    unlocked: unlocked.length > 0 ? unlocked : fallback.badges.unlocked,
+    lockedSlots,
+    totalCollected: unlocked.length,
+    totalBadges: gameProfile.badges.length,
   };
 }

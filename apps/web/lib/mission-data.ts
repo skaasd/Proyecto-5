@@ -1,4 +1,6 @@
 import type { MissionMove } from "@project-name/ui";
+import { buildUserApiHeaders, getApiBaseUrl } from "./api-client";
+import type { CurrentUser } from "./current-user";
 
 /*
   Mock data de una misión. Temporal.
@@ -6,6 +8,7 @@ import type { MissionMove } from "@project-name/ui";
 */
 
 export type MissionData = {
+  questionId?: string;
   chapterLabel: string;
   chapterTitle: string;
   currentChapter: number;
@@ -21,6 +24,55 @@ export type MissionData = {
   rewardText: string;
   peersText: string;
 };
+
+type NextQuestionResponse = {
+  question: {
+    id: string;
+    prompt: string;
+    concepts: Array<{ id: string; name: string }>;
+    answers: Array<{ id: string; text: string }>;
+  } | null;
+};
+
+export async function getMissionDataForUser(
+  id: string,
+  currentUser: CurrentUser,
+): Promise<MissionData> {
+  try {
+    const response = await fetch(
+      `${getApiBaseUrl()}/api/questions/next?userId=${encodeURIComponent(currentUser.id)}`,
+      {
+        cache: "no-store",
+        headers: buildUserApiHeaders(currentUser),
+      },
+    );
+
+    if (!response.ok) {
+      return getMissionData(id);
+    }
+
+    const result = (await response.json()) as NextQuestionResponse;
+
+    if (!result.question) {
+      return {
+        ...getMissionData(id),
+        chapterLabel: "Ruta al dia",
+        chapterTitle: "No hay movimientos pendientes",
+        problemTitle: "Tu bandeja de quests esta despejada",
+        dialog:
+          '"No tienes una pregunta pendiente ahora mismo. Puedes volver al dashboard o revisar tu portafolio."',
+        prompt: "Cuando aparezca el siguiente movimiento, lo veras aqui.",
+        moves: [],
+        rewardText: "Sin movimientos pendientes",
+        peersText: "Ruta sincronizada",
+      };
+    }
+
+    return buildMissionDataFromQuestion(result.question);
+  } catch {
+    return getMissionData(id);
+  }
+}
 
 export function getMissionData(_id: string): MissionData {
   return {
@@ -80,4 +132,48 @@ export function getMissionData(_id: string): MissionData {
     rewardText: "+180 XP · +1 caso al portafolio",
     peersText: "12 personas en esta misión ahora",
   };
+}
+
+function buildMissionDataFromQuestion(question: NonNullable<NextQuestionResponse["question"]>) {
+  const conceptName = question.concepts[0]?.name ?? "QA";
+  const styles = [
+    { style: "analytic", styleLabel: "ANALITICA", timeText: "~5 min" },
+    { style: "method", styleLabel: "METODICA", timeText: "~5 min" },
+    { style: "human", styleLabel: "HUMANA", timeText: "~5 min" },
+    { style: "creative", styleLabel: "CREATIVA", timeText: "~5 min" },
+  ] as const;
+  const moves = question.answers.map((answer, index) => {
+    const visual = styles[index % styles.length] ?? styles[0];
+
+    return {
+      id: answer.id,
+      title: answer.text,
+      description: "Elige este movimiento si refleja mejor tu lectura del escenario.",
+      style: visual.style,
+      styleLabel: visual.styleLabel,
+      timeText: visual.timeText,
+    } satisfies MissionMove;
+  });
+
+  return {
+    questionId: question.id,
+    chapterLabel: "Movimiento sugerido",
+    chapterTitle: `${conceptName} · Decision activa`,
+    currentChapter: 1,
+    totalChapters: Math.max(1, question.answers.length),
+    clientName: "Caso QA · Backend sincronizado",
+    problemTitle: conceptName,
+    problemMeta: "Generado desde la API · registra evidencia al responder",
+    speaker: "Escenario",
+    dialog: `"${question.prompt}"`,
+    tags: [
+      { label: "Desde backend", tone: "info" },
+      { label: "Evidencia trazable", tone: "strategy" },
+      { label: "Sin tiempo limite", tone: "warn" },
+    ],
+    prompt: "Elige tu proximo movimiento. Se registrara como evidencia de aprendizaje.",
+    moves,
+    rewardText: "+30 XP · +10 monedas",
+    peersText: "Sincronizado con tu ruta",
+  } satisfies MissionData;
 }

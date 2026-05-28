@@ -14,6 +14,8 @@ export type ReviewSchedulingResult = ReviewMemoryState & {
   nextReviewAt: Date;
 };
 
+const MAX_INTERVAL_DAYS = 365;
+
 export function scheduleNextReview(input: ReviewSchedulingInput): ReviewSchedulingResult {
   const previous = input.previousState;
   const reviewCount = (previous?.reviewCount ?? 0) + 1;
@@ -33,7 +35,7 @@ export function scheduleNextReview(input: ReviewSchedulingInput): ReviewScheduli
   const previousDifficulty = previous?.difficulty ?? 5;
   const difficulty = clamp(previousDifficulty - 0.35, 1, 10);
   const stability = previous ? previous.stability * (1 + 0.12 * (11 - previousDifficulty)) : 2.5;
-  const intervalDays = Math.max(1, Math.round(stability));
+  const intervalDays = clamp(Math.round(stability), 1, MAX_INTERVAL_DAYS);
 
   return {
     difficulty,

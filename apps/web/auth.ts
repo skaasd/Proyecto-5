@@ -6,6 +6,9 @@ import Resend from "next-auth/providers/resend";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  secret:
+    process.env.AUTH_SECRET ??
+    (process.env.NODE_ENV !== "production" ? "dev-secret-for-local-runtime-only" : undefined),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
