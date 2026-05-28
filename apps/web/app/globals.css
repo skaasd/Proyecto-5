@@ -2,32 +2,116 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Sistema de diseño · {{PROJECT_NAME}}
+  Paleta en HSL para compatibilidad con el theming existente.
+  Profesional + alma de juego. Tema oscuro como default.
+*/
+
 :root {
-  --background: 220 13% 5%;
-  --surface: 220 13% 9%;
-  --foreground: 220 16% 96%;
-  --border: 218 14% 14%;
-  --border-emphasis: 218 14% 19%;
-  --muted: 220 13% 12%;
-  --muted-foreground: 222 10% 64%;
-  --primary: 150 84% 61%;
-  --primary-foreground: 220 13% 5%;
-  --accent: 239 84% 67%;
+  /* superficies */
+  --background: 222 24% 4%; /* #08090C casi negro */
+  --surface: 222 18% 8%; /* #101218 */
+  --surface-2: 222 16% 11%; /* #161922 */
+  --border: 222 17% 14%; /* #1E222C */
+  --border-emphasis: 222 15% 20%; /* #2A2F3B */
+
+  /* texto */
+  --foreground: 220 16% 96%; /* #F4F5F7 */
+  --text-2: 220 12% 82%; /* #C9CDD6 */
+  --muted-foreground: 222 10% 59%; /* #8B92A0 */
+  --text-4: 222 9% 41%; /* #5E6573 */
+
+  /* acentos semánticos */
+  --primary: 142 69% 58%; /* verde — dominado/positivo */
+  --primary-foreground: 222 24% 4%;
+  --accent: 239 84% 67%; /* indigo — presente/acción */
   --accent-foreground: 220 16% 96%;
-  --accent-success: 142 69% 58%;
-  --accent-progress: 239 84% 67%;
-  --accent-insight: 38 92% 50%;
-  --accent-narrative: 330 81% 60%;
-  --accent-info: 188 86% 43%;
-  --font-sans: Inter;
+  --accent-success: 142 69% 58%; /* verde */
+  --accent-progress: 258 90% 66%; /* violeta — en progreso */
+  --accent-insight: 38 92% 50%; /* ámbar — insights/calidez */
+  --accent-narrative: 330 81% 60%; /* rosa — narrativa/creatividad */
+  --accent-info: 188 86% 43%; /* cyan — info/datos */
+  --accent-alert: 0 84% 60%; /* rojo suave — alertas raras */
+
+  /* fuentes (cargadas en layout.tsx vía next/font) */
+  --font-display: var(--font-sora), system-ui, sans-serif;
+  --font-sans: var(--font-geist), system-ui, sans-serif;
 }
 
 * {
   border-color: hsl(var(--border));
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  letter-spacing: -0.01em;
+  font-family: var(--font-sans);
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* atmósfera: halos de color sutiles de fondo */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 50% at 15% 0%, hsl(239 84% 67% / 0.07), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 90% 100%, hsl(258 90% 66% / 0.05), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* grano sutil para textura */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* el contenido va sobre la atmósfera */
+#__next,
+main {
+  position: relative;
+  z-index: 2;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+::selection {
+  background: hsl(258 90% 66% / 0.3);
+}
+
+/* utilidades de animación reutilizables */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+.animate-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, hsl(258 90% 80% / 0.3), transparent);
+  animation: shimmer 2.2s linear infinite;
 }

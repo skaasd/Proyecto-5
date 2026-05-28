@@ -1,607 +1,268 @@
-import { signOut } from "@/auth";
-import { Button } from "@/components/ui/button";
-import { buildUserApiHeaders, getApiBaseUrl } from "@/lib/api-client";
-import { type CurrentUser, getCurrentUser } from "@/lib/current-user";
+"use client";
+
+import { QuestBanner, SkillTree, SkillTreeLegend } from "@project-name/ui";
+import { motion } from "framer-motion";
 import {
-  BadgeGrid,
-  CoinDisplay,
-  ConstanciaIndicator,
-  LevelBadge,
-  QuestSceneCard,
-  SkillNode,
-  XPBar,
-} from "@project-name/ui";
-import { CalendarDays, Download, LineChart, LogOut, PauseCircle, UserCircle } from "lucide-react";
-import Link from "next/link";
-import { redirect } from "next/navigation";
+  BookOpen,
+  Coins,
+  Compass,
+  Flame,
+  Lightbulb,
+  Lock,
+  Pause,
+  Puzzle,
+  Share2,
+  Shield,
+  Sun,
+  Target,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getDashboardData } from "../../lib/dashboard-data";
 
-type NextQuestionResponse = {
-  question: {
-    id: string;
-    prompt: string;
-    concepts: Array<{ id: string; name: string }>;
-    answers: Array<{ id: string; text: string }>;
-  } | null;
+const iconMap: Record<string, React.ReactNode> = {
+  shield: <Shield size={19} />,
+  target: <Target size={19} />,
+  flame: <Flame size={19} />,
+  bulb: <Lightbulb size={19} />,
+  puzzle: <Puzzle size={19} />,
+  book: <BookOpen size={19} />,
 };
 
-type LearningOverviewResponse = {
-  overview: {
-    userId: string;
-    totalResponses: number;
-    correctResponses: number;
-    accuracyRate: number | null;
-    conceptsExplored: number;
-    totalTimeMs: number;
-    lastActivityAt?: string;
-    nextReviewAt?: string;
-    recentResponses: Array<{
-      id: string;
-      questionId: string;
-      questionPrompt: string;
-      answerText?: string;
-      outcome: "expected" | "review";
-      submittedAt: string;
-    }>;
-  };
+const questTagClass: Record<string, string> = {
+  daily: "bg-[hsl(142_69%_58%/0.12)] text-accent-success",
+  weekly: "bg-[hsl(239_84%_67%/0.12)] text-[hsl(239_84%_76%)]",
+  side: "bg-[hsl(38_92%_50%/0.12)] text-accent-insight",
 };
 
-type UserPreferencesResponse = {
-  preferences: {
-    userId: string;
-    questionsPerWeek: number;
-    tipsPerWeek: number;
-    isPaused: boolean;
-    pausedUntil?: string;
-  };
+const questIcon: Record<string, React.ReactNode> = {
+  daily: <Sun size={15} className="text-accent-insight" />,
+  weekly: <Puzzle size={15} className="text-[hsl(239_84%_76%)]" />,
+  side: <Compass size={15} className="text-accent-insight" />,
 };
-
-type GameProfileResponse = {
-  gameProfile: {
-    userId: string;
-    level: number;
-    totalXp: number;
-    coins: number;
-    constanciaDays: number;
-    currentLevelXp: number;
-    nextLevelXp: number;
-    badges: Array<{
-      title: string;
-      rarity: "common" | "rare" | "epic";
-      isLocked?: boolean;
-    }>;
-    skillNodes: Array<{
-      label: string;
-      level: string;
-      state: "mastered" | "active" | "locked";
-    }>;
-  };
-};
-
-const demoSkillNodes = [
-  { label: "Fundamentos QA", level: "Nivel II", state: "mastered" as const },
-  { label: "Pruebas de humo", level: "Nivel I", state: "active" as const },
-  { label: "Regresión", level: "Nivel I", state: "active" as const },
-  { label: "Automatización", level: "Por descubrir", state: "locked" as const },
+const lockedBadgeSlotKeys = [
+  "locked-slot-1",
+  "locked-slot-2",
+  "locked-slot-3",
+  "locked-slot-4",
+  "locked-slot-5",
+  "locked-slot-6",
+  "locked-slot-7",
+  "locked-slot-8",
 ];
 
-const demoBadges = [
-  { title: "Primer movimiento", rarity: "common" as const },
-  { title: "Observador constante", rarity: "rare" as const },
-  { title: "Cartógrafo QA", rarity: "epic" as const, isLocked: true },
-  { title: "Ruta de regresión", rarity: "rare" as const, isLocked: true },
-];
+export default function DashboardPage() {
+  const router = useRouter();
+  const data = getDashboardData();
+  const [xpWidth, setXpWidth] = useState(0);
 
-async function signOutCurrentUser() {
-  "use server";
+  const xpRatio =
+    (data.user.currentXp - data.user.currentLevelXp) /
+    Math.max(1, data.user.nextLevelXp - data.user.currentLevelXp);
 
-  await signOut({
-    redirectTo: "/login",
-  });
-}
-
-async function submitUserResponse(formData: FormData) {
-  "use server";
-
-  const currentUser = await getCurrentUser();
-  const questionId = formData.get("questionId");
-  const answerId = formData.get("answerId");
-
-  if (typeof questionId !== "string" || typeof answerId !== "string") {
-    redirect("/dashboard?feedback=Elige%20un%20movimiento%20para%20registrar%20tu%20avance.");
-  }
-
-  const response = await fetch(`${getApiBaseUrl()}/api/responses`, {
-    method: "POST",
-    headers: buildUserApiHeaders(currentUser, {
-      "content-type": "application/json",
-    }),
-    body: JSON.stringify({
-      userId: currentUser.id,
-      questionId,
-      answerId,
-      responseTimeMs: 60_000,
-      attemptNumber: 1,
-      channel: "web",
-    }),
-  });
-
-  if (!response.ok) {
-    redirect("/dashboard?feedback=No%20pudimos%20registrar%20el%20movimiento%20todav%C3%ADa.");
-  }
-
-  const result = (await response.json()) as { feedback?: string };
-  const feedback = encodeURIComponent(result.feedback ?? "Movimiento registrado.");
-  redirect(`/dashboard?feedback=${feedback}`);
-}
-
-async function toggleLearningPause(formData: FormData) {
-  "use server";
-
-  const currentUser = await getCurrentUser();
-  const isPaused = formData.get("isPaused") === "true";
-
-  const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/pause`, {
-    method: "POST",
-    headers: buildUserApiHeaders(currentUser, {
-      "content-type": "application/json",
-    }),
-    body: JSON.stringify({
-      isPaused,
-    }),
-  });
-
-  const feedback = isPaused
-    ? "Pausamos las quests. Tu avance sigue guardado."
-    : "Reanudamos la ruta. Sin apuro, seguimos desde aquí.";
-
-  if (!response.ok) {
-    redirect("/dashboard?feedback=No%20pudimos%20actualizar%20la%20pausa%20todav%C3%ADa.");
-  }
-
-  redirect(`/dashboard?feedback=${encodeURIComponent(feedback)}`);
-}
-
-async function updateLearningCadence(formData: FormData) {
-  "use server";
-
-  const currentUser = await getCurrentUser();
-  const questionsPerWeek = Number(formData.get("questionsPerWeek"));
-  const tipsPerWeek = Number(formData.get("tipsPerWeek"));
-
-  const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/preferences`, {
-    method: "PATCH",
-    headers: buildUserApiHeaders(currentUser, {
-      "content-type": "application/json",
-    }),
-    body: JSON.stringify({
-      questionsPerWeek,
-      tipsPerWeek,
-    }),
-  });
-
-  if (!response.ok) {
-    redirect("/dashboard?feedback=No%20pudimos%20actualizar%20el%20ritmo%20todav%C3%ADa.");
-  }
-
-  redirect("/dashboard?feedback=Actualizamos%20tu%20ritmo%20de%20aprendizaje.");
-}
-
-async function getNextQuestion(currentUser: CurrentUser): Promise<NextQuestionResponse | null> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/api/questions/next?userId=${currentUser.id}`, {
-      cache: "no-store",
-      headers: buildUserApiHeaders(currentUser),
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return (await response.json()) as NextQuestionResponse;
-  } catch {
-    return null;
-  }
-}
-
-async function getUserPreferences(
-  currentUser: CurrentUser,
-): Promise<UserPreferencesResponse | null> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/preferences`, {
-      cache: "no-store",
-      headers: buildUserApiHeaders(currentUser),
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return (await response.json()) as UserPreferencesResponse;
-  } catch {
-    return null;
-  }
-}
-
-async function getLearningOverview(
-  currentUser: CurrentUser,
-): Promise<LearningOverviewResponse | null> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/overview`, {
-      cache: "no-store",
-      headers: buildUserApiHeaders(currentUser),
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return (await response.json()) as LearningOverviewResponse;
-  } catch {
-    return null;
-  }
-}
-
-async function getGameProfile(currentUser: CurrentUser): Promise<GameProfileResponse | null> {
-  try {
-    const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/game-profile`, {
-      cache: "no-store",
-      headers: buildUserApiHeaders(currentUser),
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return (await response.json()) as GameProfileResponse;
-  } catch {
-    return null;
-  }
-}
-
-function getExportUrl() {
-  return "/api/learning-export";
-}
-
-function formatTime(totalTimeMs: number) {
-  const minutes = Math.round(totalTimeMs / 60_000);
-
-  if (minutes < 60) {
-    return `${minutes} min`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes > 0 ? `${hours} h ${remainingMinutes} min` : `${hours} h`;
-}
-
-function formatAccuracy(accuracyRate: number | null) {
-  if (accuracyRate === null) {
-    return "Sin datos";
-  }
-
-  return `${Math.round(accuracyRate * 100)}%`;
-}
-
-function formatNextReview(nextReviewAt?: string) {
-  if (!nextReviewAt) {
-    return "Aparecerá cuando registres tu primer movimiento.";
-  }
-
-  return new Date(nextReviewAt).toLocaleString("es-CL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
-function formatActivityDate(submittedAt: string) {
-  return new Date(submittedAt).toLocaleString("es-CL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams?: { feedback?: string };
-}) {
-  const currentUser = await getCurrentUser();
-  const [nextQuestion, learningOverview, userPreferencesResponse, gameProfileResponse] =
-    await Promise.all([
-      getNextQuestion(currentUser),
-      getLearningOverview(currentUser),
-      getUserPreferences(currentUser),
-      getGameProfile(currentUser),
-    ]);
-  const userPreferences = userPreferencesResponse?.preferences;
-  const feedback = searchParams?.feedback;
-  const overview = learningOverview?.overview;
-  const gameProfile = gameProfileResponse?.gameProfile ?? {
-    level: 1,
-    totalXp: 0,
-    coins: 0,
-    constanciaDays: 0,
-    currentLevelXp: 0,
-    nextLevelXp: 120,
-    badges: demoBadges.map((badge) => ({ ...badge, isLocked: true })),
-    skillNodes: demoSkillNodes.map((node) => ({ ...node, state: "locked" as const })),
-  };
-  const isPaused = userPreferences?.isPaused ?? false;
-  const accuracyPercent = Math.round((overview?.accuracyRate ?? 0) * 100);
-  const questionsPercent = Math.min((overview?.totalResponses ?? 0) * 20, 100);
-  const exportUrl = getExportUrl();
-  const metrics = [
-    { label: "Conceptos explorados", value: String(overview?.conceptsExplored ?? 0) },
-    { label: "Movimientos registrados", value: String(overview?.totalResponses ?? 0) },
-    { label: "Tiempo en observatorio", value: formatTime(overview?.totalTimeMs ?? 0) },
-  ];
+  useEffect(() => {
+    const t = setTimeout(() => setXpWidth(xpRatio * 100), 200);
+    return () => clearTimeout(t);
+  }, [xpRatio]);
 
   return (
-    <main className="mx-auto min-h-screen max-w-6xl px-6 py-8">
-      <header className="flex flex-col gap-4 border-b pb-6 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-medium text-accent">Observatorio</p>
-          <h1 className="mt-2 text-3xl font-semibold">Tu trayectoria en QA</h1>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <UserCircle size={16} aria-hidden="true" />
-            <span>{currentUser.name ?? currentUser.email ?? "Aprendiz"}</span>
-            {currentUser.isDemo ? (
-              <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">Modo demo</span>
-            ) : null}
+    <div className="mx-auto max-w-[1080px] px-5 py-6">
+      {/* hero bar */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mb-3.5 flex flex-col gap-4 rounded-2xl border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="flex items-center gap-3.5">
+          <div className="relative grid h-[46px] w-[46px] place-items-center rounded-[13px] bg-gradient-to-br from-accent to-accent-progress font-display text-lg font-semibold shadow-[0_4px_14px_hsl(239_84%_67%/0.3)]">
+            {data.user.initial}
+            <span className="absolute -bottom-1.5 -right-1.5 rounded-md border-2 border-background bg-accent-insight px-1.5 text-[10px] font-bold text-[#1a1205]">
+              Nv {data.user.level}
+            </span>
+          </div>
+          <div>
+            <p className="text-[11px] font-medium text-[hsl(258_90%_80%)]">{data.user.greeting}</p>
+            <h2 className="text-[17px]">{data.user.name}</h2>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">{data.user.lastVisitNote}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <a href={exportUrl}>
-              <Download size={18} aria-hidden="true" />
-              Exportar datos
-            </a>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/profile">
-              <UserCircle size={18} aria-hidden="true" />
-              Perfil
-            </Link>
-          </Button>
-          <form action={toggleLearningPause}>
-            <input name="isPaused" type="hidden" value={isPaused ? "false" : "true"} />
-            <Button type="submit" variant="outline">
-              <PauseCircle size={18} aria-hidden="true" />
-              {isPaused ? "Reanudar ruta" : "Pausar quests"}
-            </Button>
-          </form>
-          {currentUser.isDemo ? (
-            <Button asChild variant="outline">
-              <Link href="/login">Entrar</Link>
-            </Button>
-          ) : (
-            <form action={signOutCurrentUser}>
-              <Button type="submit" variant="outline">
-                <LogOut size={18} aria-hidden="true" />
-                Salir
-              </Button>
-            </form>
-          )}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-[9px] border border-[hsl(38_92%_50%/0.22)] bg-[hsl(38_92%_50%/0.1)] px-3 py-[7px] text-[13px] font-medium text-accent-insight">
+            <Coins size={14} /> {data.user.coins}
+          </div>
+          <div className="flex items-center gap-1.5 rounded-[9px] border border-[hsl(142_69%_58%/0.22)] bg-[hsl(142_69%_58%/0.1)] px-3 py-[7px] text-[13px] font-medium text-accent-success">
+            <Flame size={14} /> {data.user.constanciaDays} días
+          </div>
+          <button
+            className="flex items-center gap-1.5 rounded-md border border-border-emphasis px-3 py-[7px] text-[11px] text-muted-foreground transition-colors hover:text-text-2"
+            type="button"
+          >
+            <Pause size={13} /> Pausar
+          </button>
         </div>
-      </header>
+      </motion.div>
 
-      <section className="mt-8 rounded-lg border bg-surface p-5">
-        <div className="grid gap-5 lg:grid-cols-[auto_auto_auto_1fr] lg:items-center">
-          <LevelBadge level={gameProfile.level} />
-          <CoinDisplay coins={gameProfile.coins} />
-          <ConstanciaIndicator days={gameProfile.constanciaDays} />
-          <XPBar
-            currentXp={gameProfile.totalXp}
-            currentLevelXp={gameProfile.currentLevelXp}
-            nextLevelXp={gameProfile.nextLevelXp}
-            label="Próximo desbloqueo"
+      {/* xp row */}
+      <div className="mb-3.5 flex items-center gap-3.5 rounded-2xl border border-border bg-surface px-5 py-3">
+        <span className="whitespace-nowrap font-display text-[13px] font-semibold text-text-2">
+          Nivel {data.user.level}
+        </span>
+        <div className="relative h-2 flex-1 overflow-hidden rounded-[5px] bg-surface-2">
+          <motion.div
+            className="relative h-full rounded-[5px]"
+            style={{ background: "linear-gradient(90deg, hsl(38 92% 50%), #F97316)" }}
+            animate={{ width: `${xpWidth}%` }}
+            transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
           />
         </div>
-      </section>
+        <span className="whitespace-nowrap text-[12px] font-semibold text-accent-insight">
+          {data.user.currentXp.toLocaleString("es")} / {data.user.nextLevelXp.toLocaleString("es")}{" "}
+          XP
+        </span>
+      </div>
 
-      <section className="mt-8 grid gap-4 md:grid-cols-3">
-        {metrics.map((metric) => (
-          <div className="rounded-lg border bg-surface p-5" key={metric.label}>
-            <p className="text-sm text-muted-foreground">{metric.label}</p>
-            <p className="mt-3 text-2xl font-semibold">{metric.value}</p>
-          </div>
+      {/* active quest */}
+      <div className="mb-3.5">
+        <QuestBanner
+          title={data.activeQuest.title}
+          description={data.activeQuest.description}
+          steps={data.activeQuest.steps}
+          rewardText={data.activeQuest.rewardText}
+          unlockText={data.activeQuest.unlockText}
+          onContinue={() => router.push("/mission/demo")}
+        />
+      </div>
+
+      {/* quest cards */}
+      <div className="mb-3.5 grid gap-3 sm:grid-cols-3">
+        {data.quests.map((q, i) => (
+          <motion.div
+            key={q.title}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 + i * 0.05, duration: 0.4 }}
+            className="cursor-pointer rounded-[13px] border border-border bg-surface px-4 py-3.5 transition-all hover:-translate-y-0.5 hover:border-border-emphasis hover:bg-surface-2"
+          >
+            <div className="mb-2.5 flex items-start justify-between">
+              <span
+                className={`rounded-[5px] px-2 py-0.5 text-[9px] font-semibold tracking-wider ${questTagClass[q.type]}`}
+              >
+                {q.typeLabel}
+              </span>
+              {questIcon[q.type]}
+            </div>
+            <h3 className="text-[13px] font-medium leading-snug">{q.title}</h3>
+            <p className="mt-2 text-[10px] text-muted-foreground">{q.meta}</p>
+          </motion.div>
         ))}
-      </section>
+      </div>
 
-      <section className="mt-8 rounded-lg border bg-surface p-5">
-        <div>
-          <p className="text-sm font-medium text-accent">Ritmo</p>
-          <h2 className="mt-2 text-xl font-semibold">Preferencias semanales</h2>
-        </div>
-
-        <form
-          action={updateLearningCadence}
-          className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end"
-        >
-          <label className="grid gap-2 text-sm font-medium" htmlFor="questionsPerWeek">
-            Quests por semana
-            <input
-              className="h-11 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
-              defaultValue={userPreferences?.questionsPerWeek ?? 5}
-              id="questionsPerWeek"
-              max={21}
-              min={1}
-              name="questionsPerWeek"
-              type="number"
-            />
-          </label>
-
-          <label className="grid gap-2 text-sm font-medium" htmlFor="tipsPerWeek">
-            Tips por semana
-            <input
-              className="h-11 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary"
-              defaultValue={userPreferences?.tipsPerWeek ?? 2}
-              id="tipsPerWeek"
-              max={14}
-              min={0}
-              name="tipsPerWeek"
-              type="number"
-            />
-          </label>
-
-          <Button type="submit">Guardar ritmo</Button>
-        </form>
-      </section>
-
-      <section className="mt-8 grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-lg border bg-surface p-5">
-          <div className="flex items-center gap-2">
-            <LineChart size={20} className="text-primary" aria-hidden="true" />
-            <h2 className="text-lg font-semibold">Mapa de habilidades</h2>
+      {/* skill tree */}
+      <div className="mb-3.5 rounded-2xl border border-border bg-surface p-5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[15px]">Tu mapa del {data.skillTree.pathName}</h3>
+          <div className="flex gap-1.5">
+            <button
+              className="rounded-md border border-[hsl(258_90%_66%/0.35)] bg-[hsl(239_84%_67%/0.12)] px-[11px] py-1 text-[11px] text-[hsl(258_90%_80%)]"
+              type="button"
+            >
+              QA Path
+            </button>
+            <button
+              className="rounded-md border border-border px-[11px] py-1 text-[11px] text-muted-foreground"
+              type="button"
+            >
+              Automation
+            </button>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {gameProfile.skillNodes.map((node) => (
-              <SkillNode
-                key={node.label}
-                label={node.label}
-                level={node.level}
-                state={node.state}
-              />
+        </div>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          Toca un nodo para explorarlo · las ramas se desbloquean al avanzar
+        </p>
+        <div className="mt-2">
+          <SkillTree nodes={data.skillTree.nodes} edges={data.skillTree.edges} />
+        </div>
+        <SkillTreeLegend />
+      </div>
+
+      {/* badges + companions */}
+      <div className="grid gap-3.5 lg:grid-cols-[1.3fr_1fr]">
+        {/* badges */}
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[15px]">Insignias</h3>
+            <button
+              className="flex items-center gap-1.5 rounded-md border border-border-emphasis px-[11px] py-1.5 text-[11px] text-muted-foreground transition-colors hover:text-text-2"
+              onClick={() => router.push("/portfolio")}
+              type="button"
+            >
+              <Share2 size={12} /> Compartir
+            </button>
+          </div>
+          <p className="mb-3.5 mt-0.5 text-[11px] text-muted-foreground">
+            {data.badges.totalCollected} de {data.badges.totalBadges} coleccionadas
+          </p>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+            {data.badges.unlocked.map((b, i) => (
+              <motion.div
+                key={b.label}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.15 + i * 0.05, type: "spring", stiffness: 260, damping: 20 }}
+                className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl p-1 transition-transform hover:-translate-y-1 hover:scale-105"
+                style={{ background: b.gradient }}
+              >
+                <span className="text-white">{iconMap[b.icon]}</span>
+                <small className="mt-1 text-center text-[7.5px] font-semibold leading-tight tracking-wide text-white">
+                  {b.label}
+                </small>
+              </motion.div>
+            ))}
+            {lockedBadgeSlotKeys.slice(0, data.badges.lockedSlots).map((key) => (
+              <div
+                key={key}
+                className="flex aspect-square flex-col items-center justify-center rounded-xl border border-dashed border-border-emphasis bg-white/[0.03] p-1"
+              >
+                <Lock size={16} className="text-text-4" />
+              </div>
             ))}
           </div>
-          <div className="mt-6 grid gap-4">
-            <div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Lectura consolidada</span>
-                <span className="font-medium">
-                  {formatAccuracy(overview?.accuracyRate ?? null)}
-                </span>
-              </div>
-              <div className="mt-2 h-2 rounded-full bg-muted">
-                <div
-                  className="h-2 rounded-full bg-primary"
-                  style={{ width: `${accuracyPercent}%` }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Quests recorridas</span>
-                <span className="font-medium">{overview?.totalResponses ?? 0}</span>
-              </div>
-              <div className="mt-2 h-2 rounded-full bg-muted">
-                <div
-                  className="h-2 rounded-full bg-accent"
-                  style={{ width: `${questionsPercent}%` }}
-                />
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div className="rounded-lg border bg-surface p-5">
-          <div className="flex items-center gap-2">
-            <CalendarDays size={20} className="text-primary" aria-hidden="true" />
-            <h2 className="text-lg font-semibold">Siguiente movimiento</h2>
+        {/* companions */}
+        <div className="rounded-2xl border border-border bg-surface p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[15px]">Compañeros de ruta</h3>
+            <span className="text-[11px] text-accent-success">
+              +{data.companionsNewThisWeek} esta semana
+            </span>
           </div>
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            {formatNextReview(overview?.nextReviewAt)}
+          <p className="mb-2 mt-0.5 text-[11px] text-muted-foreground">
+            Otros explorando el {data.skillTree.pathName}
           </p>
-        </div>
-      </section>
-
-      <QuestSceneCard
-        eyebrow="Quest activa"
-        reward="+30 XP · +8 monedas"
-        title="Movimiento sugerido"
-      >
-        {feedback ? (
-          <div className="mt-5 rounded-md border bg-muted p-4 text-sm leading-6">{feedback}</div>
-        ) : null}
-
-        {isPaused ? (
-          <div className="mt-6 rounded-md border bg-muted p-4 text-sm leading-6 text-muted-foreground">
-            La ruta está en pausa. Tu trayectoria queda guardada y puedes volver cuando estés listo.
-          </div>
-        ) : nextQuestion?.question ? (
-          <form action={submitUserResponse} className="mt-6 grid gap-5">
-            <input name="questionId" type="hidden" value={nextQuestion.question.id} />
-            <p className="text-base leading-7">{nextQuestion.question.prompt}</p>
-
-            <div className="flex flex-wrap gap-2">
-              {nextQuestion.question.concepts.map((concept) => (
-                <span
-                  className="rounded-md bg-muted px-3 py-1 text-xs text-muted-foreground"
-                  key={concept.id}
-                >
-                  {concept.name}
-                </span>
-              ))}
-            </div>
-
-            <div className="grid gap-3">
-              {nextQuestion.question.answers.map((answer) => (
-                <label
-                  className="flex gap-3 rounded-md border bg-background p-3 text-sm"
-                  key={answer.id}
-                >
-                  <input className="mt-1" name="answerId" required type="radio" value={answer.id} />
-                  <span>{answer.text}</span>
-                </label>
-              ))}
-            </div>
-
-            <div>
-              <Button type="submit">Registrar movimiento</Button>
-            </div>
-          </form>
-        ) : (
-          <p className="mt-5 text-sm leading-6 text-muted-foreground">
-            Levanta la API y carga el seed para ver la primera quest demo.
-          </p>
-        )}
-      </QuestSceneCard>
-
-      <section className="mt-8 rounded-lg border bg-surface p-5">
-        <div>
-          <p className="text-sm font-medium text-accent">Colección</p>
-          <h2 className="mt-2 text-xl font-semibold">Insignias de ruta</h2>
-        </div>
-        <div className="mt-6">
-          <BadgeGrid badges={gameProfile.badges} />
-        </div>
-      </section>
-
-      <section className="mt-8 rounded-lg border bg-surface p-5">
-        <div>
-          <p className="text-sm font-medium text-accent">Evidencia reciente</p>
-          <h2 className="mt-2 text-xl font-semibold">Últimos movimientos</h2>
-        </div>
-
-        {overview?.recentResponses.length ? (
-          <div className="mt-6 grid gap-3">
-            {overview.recentResponses.map((response) => (
-              <article className="rounded-md border bg-background p-4" key={response.id}>
-                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="text-sm leading-6">{response.questionPrompt}</p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Tu movimiento: {response.answerText ?? "Movimiento registrado"}
-                    </p>
-                  </div>
-                  <span className="w-fit rounded-md bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                    {response.outcome === "expected"
-                      ? "Coincide con lo esperado"
-                      : "Para revisar con calma"}
-                  </span>
+          {data.companions.map((c) => (
+            <div
+              key={c.name}
+              className="flex items-center gap-2.5 border-b border-border py-2.5 last:border-none"
+            >
+              <div
+                className="grid h-[30px] w-[30px] flex-shrink-0 place-items-center rounded-full font-display text-[12px] font-semibold text-white"
+                style={{ background: c.gradient }}
+              >
+                {c.initial}
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between text-[12px] font-medium">
+                  {c.name}
+                  <span className="text-muted-foreground">Nv {c.level}</span>
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Registrada el {formatActivityDate(response.submittedAt)}
-                </p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-5 text-sm leading-6 text-muted-foreground">
-            Cuando recorras una quest, aparecerá aquí como parte de tu trayectoria.
-          </p>
-        )}
-      </section>
-    </main>
+                <div className="mt-0.5 text-[10px] text-muted-foreground">{c.activity}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
