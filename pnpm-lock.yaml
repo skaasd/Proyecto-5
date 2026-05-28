@@ -32,6 +32,9 @@ importers:
       '@project-name/persistence':
         specifier: workspace:*
         version: link:../../packages/adapters/persistence
+      '@project-name/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       fastify:
         specifier: ^5.1.0
         version: 5.8.5
@@ -118,6 +121,15 @@ importers:
 
   apps/worker:
     dependencies:
+      '@project-name/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@project-name/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@project-name/persistence':
+        specifier: workspace:*
+        version: link:../../packages/adapters/persistence
       bullmq:
         specifier: ^5.34.2
         version: 5.77.6
@@ -134,6 +146,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.19)
 
   packages/adapters/persistence:
     dependencies:
@@ -162,6 +177,9 @@ importers:
       '@prisma/client':
         specifier: ^6.0.1
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      '@project-name/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       prisma:
         specifier: ^6.0.1

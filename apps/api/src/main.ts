@@ -1,5 +1,6 @@
 import {
   ExportUserData,
+  GetGameProfile,
   GetLearningOverview,
   GetNextQuestion,
   GetUserPreferences,
@@ -10,6 +11,7 @@ import {
 } from "@project-name/core";
 import { prisma } from "@project-name/db";
 import {
+  PrismaGameProfileRepository,
   PrismaLearningEventRepository,
   PrismaLearningOverviewRepository,
   PrismaQuestionRepository,
@@ -44,6 +46,10 @@ const useCases = env.DEMO_MODE
         users,
         overview: new PrismaLearningOverviewRepository(prisma),
       }),
+      getGameProfile: new GetGameProfile({
+        users,
+        gameProfiles: new PrismaGameProfileRepository(prisma),
+      }),
       getUserProfile: new GetUserProfile({
         users,
         preferences,
@@ -71,6 +77,7 @@ const useCases = env.DEMO_MODE
 
 const app = await buildApp({
   exportUserData: useCases.exportUserData,
+  getGameProfile: useCases.getGameProfile,
   getLearningOverview: useCases.getLearningOverview,
   getNextQuestion: useCases.getNextQuestion,
   getUserProfile: useCases.getUserProfile,
@@ -78,6 +85,14 @@ const app = await buildApp({
   setLearningPause: useCases.setLearningPause,
   submitUserResponse: useCases.submitUserResponse,
   updateUserPreferences: useCases.updateUserPreferences,
+  userAccess: {
+    mode: "internal",
+    demoUserId:
+      env.DEMO_MODE || env.NODE_ENV !== "production"
+        ? (env.DEMO_USER_ID ?? "user_demo")
+        : undefined,
+    internalApiSecret: env.INTERNAL_API_SECRET,
+  },
   logger: {
     level: env.LOG_LEVEL,
   },

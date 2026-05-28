@@ -29,6 +29,42 @@ export class PrismaQuestionRepository implements QuestionRepository {
   }
 
   async findNextForUser(userId: string): Promise<QuestionWithAnswers | null> {
+    const dueConceptIds = await this.prisma.spacedRepetitionState.findMany({
+      where: {
+        userId,
+        nextReviewAt: {
+          lte: new Date(),
+        },
+      },
+      orderBy: { nextReviewAt: "asc" },
+      select: { conceptId: true },
+      take: 10,
+    });
+
+    if (dueConceptIds.length > 0) {
+      const reviewQuestion = await this.prisma.question.findFirst({
+        where: {
+          isActive: true,
+          concepts: {
+            some: {
+              id: { in: dueConceptIds.map((state) => state.conceptId) },
+            },
+          },
+        },
+        include: {
+          answers: {
+            orderBy: { order: "asc" },
+          },
+          concepts: true,
+        },
+        orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+      });
+
+      if (reviewQuestion) {
+        return mapQuestion(reviewQuestion);
+      }
+    }
+
     const question =
       (await this.prisma.question.findFirst({
         where: {

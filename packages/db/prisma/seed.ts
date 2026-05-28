@@ -1,4 +1,8 @@
 import { PrismaClient } from "@prisma/client";
+import { conceptBank, questionBank } from "@project-name/shared";
+import { loadRootEnv } from "../scripts/load-root-env.js";
+
+loadRootEnv();
 
 const prisma = new PrismaClient({
   datasources: process.env.DATABASE_URL
@@ -48,7 +52,7 @@ async function main() {
     create: {
       slug: "qa",
       name: "QA",
-      description: "Fundamentos de calidad de software y automatización de pruebas.",
+      description: "Fundamentos de calidad de software y automatizacion de pruebas.",
     },
   });
 
@@ -80,123 +84,42 @@ async function main() {
     create: {
       topicId: topic.id,
       slug: "tipos-y-proposito",
-      name: "Tipos y propósito de pruebas",
-      description: "Qué busca cada tipo de prueba y cuándo aporta valor.",
+      name: "Tipos y proposito de pruebas",
+      description: "Que busca cada tipo de prueba y cuando aporta valor.",
       order: 1,
     },
   });
 
-  const concepts = await Promise.all([
-    upsertConcept(subtopic.id, "regresion", "Pruebas de regresión"),
-    upsertConcept(subtopic.id, "humo", "Pruebas de humo"),
-    upsertConcept(subtopic.id, "exploratorias", "Pruebas exploratorias"),
-    upsertConcept(subtopic.id, "cobertura", "Cobertura de pruebas"),
-  ]);
+  const concepts = await Promise.all(
+    conceptBank.map((concept) => upsertConcept(subtopic.id, concept.slug, concept.name)),
+  );
+  const conceptBySlug = new Map(concepts.map((concept) => [concept.slug, concept]));
 
-  await upsertQuestion({
-    id: "question_qa_regression_purpose",
-    domainId: domain.id,
-    topicId: topic.id,
-    subtopicId: subtopic.id,
-    conceptIds: [concepts[0].id, concepts[3].id],
-    prompt:
-      "Después de corregir un bug en el login, el equipo quiere revisar que el cambio no haya roto flujos que antes funcionaban. ¿Qué tipo de prueba describe mejor esa intención?",
-    explanation:
-      "Las pruebas de regresión buscan detectar impactos no deseados después de cambios en el producto.",
-    answers: [
-      {
-        id: "answer_qa_regression_correct",
-        text: "Prueba de regresión",
-        isCorrect: true,
-        explanation:
-          "Exacto: la intención principal es revisar que algo que ya funcionaba siga funcionando.",
-      },
-      {
-        id: "answer_qa_regression_smoke",
-        text: "Prueba de humo",
-        isCorrect: false,
-        explanation:
-          "Una prueba de humo revisa señales básicas de estabilidad, pero aquí el foco es impacto por cambio.",
-      },
-      {
-        id: "answer_qa_regression_load",
-        text: "Prueba de carga",
-        isCorrect: false,
-        explanation:
-          "La prueba de carga observa comportamiento bajo volumen; no es el objetivo central del caso.",
-      },
-    ],
-  });
-
-  await upsertQuestion({
-    id: "question_qa_smoke_release",
-    domainId: domain.id,
-    topicId: topic.id,
-    subtopicId: subtopic.id,
-    conceptIds: [concepts[1].id],
-    prompt:
-      "Antes de invertir horas en una suite completa, quieres saber si la nueva build al menos permite iniciar sesión, navegar y crear un registro básico. ¿Qué enfoque calza mejor?",
-    explanation:
-      "Las pruebas de humo dan una señal rápida sobre si una build merece revisión más profunda.",
-    answers: [
-      {
-        id: "answer_qa_smoke_correct",
-        text: "Ejecutar una prueba de humo",
-        isCorrect: true,
-        explanation:
-          "Sí. Es una revisión breve de flujos críticos antes de entrar en pruebas más detalladas.",
-      },
-      {
-        id: "answer_qa_smoke_exploratory",
-        text: "Hacer solo pruebas exploratorias largas",
-        isCorrect: false,
-        explanation:
-          "La exploración puede aportar mucho, pero aquí se busca una señal rápida y acotada.",
-      },
-      {
-        id: "answer_qa_smoke_skip",
-        text: "Saltar validaciones hasta producción",
-        isCorrect: false,
-        explanation:
-          "Eso aumenta riesgo innecesario; una señal temprana ayuda al equipo a decidir mejor.",
-      },
-    ],
-  });
-
-  await upsertQuestion({
-    id: "question_qa_exploratory_value",
-    domainId: domain.id,
-    topicId: topic.id,
-    subtopicId: subtopic.id,
-    conceptIds: [concepts[2].id, concepts[3].id],
-    prompt:
-      "Un flujo nuevo no tiene casos documentados todavía, pero ya existe una versión navegable. ¿Qué aporte específico pueden tener las pruebas exploratorias?",
-    explanation:
-      "Las pruebas exploratorias ayudan a aprender del producto mientras se prueba, especialmente cuando hay incertidumbre.",
-    answers: [
-      {
-        id: "answer_qa_exploratory_correct",
-        text: "Descubrir riesgos y comportamientos no previstos mientras se aprende el flujo",
-        isCorrect: true,
-        explanation:
-          "Bien visto. La exploración combina diseño, aprendizaje y ejecución de pruebas en una misma actividad.",
-      },
-      {
-        id: "answer_qa_exploratory_no_value",
-        text: "Reemplazar para siempre cualquier caso de prueba documentado",
-        isCorrect: false,
-        explanation:
-          "No hace falta oponerlos. La exploración y los casos documentados pueden complementarse.",
-      },
-      {
-        id: "answer_qa_exploratory_only_ui",
-        text: "Validar únicamente colores y tamaños de fuente",
-        isCorrect: false,
-        explanation:
-          "Puede incluir interfaz, pero su valor es más amplio: comportamiento, riesgos y aprendizaje.",
-      },
-    ],
-  });
+  for (const question of questionBank) {
+    await upsertQuestion({
+      id: question.id,
+      domainId: domain.id,
+      topicId: topic.id,
+      subtopicId: subtopic.id,
+      conceptIds: question.conceptSlugs.map((slug) => requireConcept(conceptBySlug, slug).id),
+      prompt: question.prompt,
+      explanation: question.explanation,
+      answers: [
+        {
+          id: `${question.id}_answer_correct`,
+          text: question.correct,
+          isCorrect: true,
+          explanation: `Correcto. ${question.explanation}`,
+        },
+        ...question.distractors.map((answer, index) => ({
+          id: `${question.id}_answer_distractor_${index + 1}`,
+          text: answer,
+          isCorrect: false,
+          explanation: `No es el mejor foco para este escenario. ${question.explanation}`,
+        })),
+      ],
+    });
+  }
 
   await prisma.tip.upsert({
     where: { id: "tip_qa_regression_small" },
@@ -205,16 +128,21 @@ async function main() {
       id: "tip_qa_regression_small",
       domainId: domain.id,
       type: "SHORT_ADVICE",
-      title: "Regresión no significa probarlo todo",
-      body: "Una buena regresión prioriza los flujos con más riesgo de impacto. No se trata de repetir todo sin criterio.",
+      title: "Regresion no significa probarlo todo",
+      body: "Una buena regresion prioriza los flujos con mas riesgo de impacto. No se trata de repetir todo sin criterio.",
       author,
       concepts: {
-        connect: [{ id: concepts[0].id }, { id: concepts[3].id }],
+        connect: [
+          { id: requireConcept(conceptBySlug, "regresion").id },
+          { id: requireConcept(conceptBySlug, "cobertura").id },
+        ],
       },
     },
   });
 
-  console.log(`Seed listo. Usuario demo: ${user.email}`);
+  console.log(
+    `Seed listo. Usuario demo: ${user.email}. Daily quests QA: ${questionBank.length}. Conceptos: ${conceptBank.length}.`,
+  );
 }
 
 async function upsertConcept(subtopicId: string, slug: string, name: string) {
@@ -253,9 +181,18 @@ type SeedQuestion = {
 };
 
 async function upsertQuestion(input: SeedQuestion) {
+  const answerIds = input.answers.map((answer) => answer.id);
+
   await prisma.question.upsert({
     where: { id: input.id },
-    update: {},
+    update: {
+      prompt: input.prompt,
+      currentVersion: 1,
+      isActive: true,
+      concepts: {
+        set: input.conceptIds.map((id) => ({ id })),
+      },
+    },
     create: {
       id: input.id,
       domainId: input.domainId,
@@ -269,25 +206,71 @@ async function upsertQuestion(input: SeedQuestion) {
       concepts: {
         connect: input.conceptIds.map((id) => ({ id })),
       },
-      versions: {
-        create: {
-          version: 1,
-          prompt: input.prompt,
-          explanation: input.explanation,
-          author,
-        },
+    },
+  });
+
+  await prisma.questionVersion.upsert({
+    where: {
+      questionId_version: {
+        questionId: input.id,
+        version: 1,
       },
-      answers: {
-        create: input.answers.map((answer, order) => ({
-          id: answer.id,
-          text: answer.text,
-          isCorrect: answer.isCorrect,
-          explanation: answer.explanation,
-          order,
-        })),
+    },
+    update: {
+      prompt: input.prompt,
+      explanation: input.explanation,
+      author,
+    },
+    create: {
+      questionId: input.id,
+      version: 1,
+      prompt: input.prompt,
+      explanation: input.explanation,
+      author,
+    },
+  });
+
+  await prisma.answer.deleteMany({
+    where: {
+      questionId: input.id,
+      id: {
+        notIn: answerIds,
       },
     },
   });
+
+  for (const [order, answer] of input.answers.entries()) {
+    await prisma.answer.upsert({
+      where: { id: answer.id },
+      update: {
+        text: answer.text,
+        isCorrect: answer.isCorrect,
+        explanation: answer.explanation,
+        order,
+      },
+      create: {
+        id: answer.id,
+        questionId: input.id,
+        text: answer.text,
+        isCorrect: answer.isCorrect,
+        explanation: answer.explanation,
+        order,
+      },
+    });
+  }
+}
+
+function requireConcept(
+  concepts: Map<string, Awaited<ReturnType<typeof upsertConcept>>>,
+  slug: string,
+) {
+  const concept = concepts.get(slug);
+
+  if (!concept) {
+    throw new Error(`Concepto seed no encontrado: ${slug}`);
+  }
+
+  return concept;
 }
 
 main()

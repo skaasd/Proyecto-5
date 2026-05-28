@@ -1,3 +1,4 @@
+export { PrismaGameProfileRepository } from "./prisma-game-profile-repository.js";
 export { PrismaLearningEventRepository } from "./prisma-learning-event-repository.js";
 export { PrismaLearningOverviewRepository } from "./prisma-learning-overview-repository.js";
 export { PrismaQuestionRepository } from "./prisma-question-repository.js";

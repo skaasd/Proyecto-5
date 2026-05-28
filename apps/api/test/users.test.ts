@@ -1,5 +1,6 @@
 import type {
   ExportUserDataResult,
+  GetGameProfileResult,
   GetLearningOverviewResult,
   GetUserPreferencesResult,
   GetUserProfileResult,
@@ -9,6 +10,7 @@ import type {
 } from "@project-name/core";
 import {
   ExportUserData,
+  GetGameProfile,
   GetLearningOverview,
   GetNextQuestion,
   GetUserPreferences,
@@ -56,6 +58,49 @@ class FakeExportUserData extends ExportUserData {
         responses: [],
         learningEvents: [],
         spacedRepetitionStates: [],
+      },
+    };
+  }
+}
+
+class FakeGetGameProfile extends GetGameProfile {
+  public calls: unknown[] = [];
+
+  constructor() {
+    super({
+      users: { findById: async () => null },
+      gameProfiles: {
+        getActivitySnapshotByUserId: async () => ({
+          userId: "user_1",
+          totalResponses: 2,
+          correctResponses: 1,
+          conceptsExplored: 3,
+          activeDays: 1,
+          concepts: [
+            { id: "concept_1", name: "Pruebas de humo", responseCount: 2, correctCount: 1 },
+          ],
+        }),
+      },
+    });
+  }
+
+  override async execute(
+    input: Parameters<GetGameProfile["execute"]>[0],
+  ): Promise<GetGameProfileResult> {
+    this.calls.push(input);
+
+    return {
+      gameProfile: {
+        userId: input.userId,
+        level: 1,
+        totalXp: 105,
+        coins: 14,
+        constanciaDays: 1,
+        currentLevelXp: 0,
+        nextLevelXp: 120,
+        progressRatio: 0.875,
+        badges: [{ title: "Primer movimiento", rarity: "common", isLocked: false }],
+        skillNodes: [{ label: "Pruebas de humo", level: "Nivel 2", state: "active" }],
       },
     };
   }
@@ -329,6 +374,7 @@ describe("GET /api/users/:userId/overview", () => {
     const useCase = new FakeGetLearningOverview();
     const app = await buildApp({
       exportUserData: new FakeExportUserData(),
+      getGameProfile: new FakeGetGameProfile(),
       getLearningOverview: useCase,
       getNextQuestion: new FakeGetNextQuestion(),
       getUserProfile: new FakeGetUserProfile(),
@@ -369,10 +415,140 @@ describe("GET /api/users/:userId/overview", () => {
     expect(useCase.calls).toEqual([{ userId: "user_1" }]);
   });
 
+  it("rechaza acceso cruzado entre usuarios reales", async () => {
+    const useCase = new FakeGetLearningOverview();
+    const app = await buildApp({
+      exportUserData: new FakeExportUserData(),
+      getGameProfile: new FakeGetGameProfile(),
+      getLearningOverview: useCase,
+      getNextQuestion: new FakeGetNextQuestion(),
+      getUserProfile: new FakeGetUserProfile(),
+      getUserPreferences: new FakeGetUserPreferences(),
+      setLearningPause: new FakeSetLearningPause(),
+      submitUserResponse: new FakeSubmitUserResponse(),
+      updateUserPreferences: new FakeUpdateUserPreferences(),
+      userAccess: {
+        mode: "internal",
+        internalApiSecret: "test-secret",
+      },
+      logger: false,
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/users/user_2/overview",
+      headers: {
+        "x-current-user-id": "user_1",
+        "x-internal-api-secret": "test-secret",
+      },
+    });
+
+    const body = JSON.parse(response.body) as { error: string };
+
+    expect(response.statusCode).toBe(403);
+    expect(body.error).toBe("USER_ACCESS_DENIED");
+    expect(useCase.calls).toEqual([]);
+  });
+
+  it("rechaza rutas de usuario real sin autenticacion interna", async () => {
+    const useCase = new FakeGetLearningOverview();
+    const app = await buildApp({
+      exportUserData: new FakeExportUserData(),
+      getGameProfile: new FakeGetGameProfile(),
+      getLearningOverview: useCase,
+      getNextQuestion: new FakeGetNextQuestion(),
+      getUserProfile: new FakeGetUserProfile(),
+      getUserPreferences: new FakeGetUserPreferences(),
+      setLearningPause: new FakeSetLearningPause(),
+      submitUserResponse: new FakeSubmitUserResponse(),
+      updateUserPreferences: new FakeUpdateUserPreferences(),
+      userAccess: {
+        mode: "internal",
+        demoUserId: "user_demo",
+      },
+      logger: false,
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/users/user_1/overview",
+    });
+
+    const body = JSON.parse(response.body) as { error: string };
+
+    expect(response.statusCode).toBe(401);
+    expect(body.error).toBe("API_AUTH_REQUIRED");
+    expect(useCase.calls).toEqual([]);
+  });
+
+  it("mantiene disponible el usuario demo sin secreto interno", async () => {
+    const useCase = new FakeGetLearningOverview();
+    const app = await buildApp({
+      exportUserData: new FakeExportUserData(),
+      getGameProfile: new FakeGetGameProfile(),
+      getLearningOverview: useCase,
+      getNextQuestion: new FakeGetNextQuestion(),
+      getUserProfile: new FakeGetUserProfile(),
+      getUserPreferences: new FakeGetUserPreferences(),
+      setLearningPause: new FakeSetLearningPause(),
+      submitUserResponse: new FakeSubmitUserResponse(),
+      updateUserPreferences: new FakeUpdateUserPreferences(),
+      userAccess: {
+        mode: "internal",
+        demoUserId: "user_demo",
+      },
+      logger: false,
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/users/user_demo/overview",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(useCase.calls).toEqual([{ userId: "user_demo" }]);
+  });
+
+  it("devuelve perfil gamificado derivado de actividad", async () => {
+    const getGameProfile = new FakeGetGameProfile();
+    const app = await buildApp({
+      exportUserData: new FakeExportUserData(),
+      getGameProfile,
+      getLearningOverview: new FakeGetLearningOverview(),
+      getNextQuestion: new FakeGetNextQuestion(),
+      getUserProfile: new FakeGetUserProfile(),
+      getUserPreferences: new FakeGetUserPreferences(),
+      setLearningPause: new FakeSetLearningPause(),
+      submitUserResponse: new FakeSubmitUserResponse(),
+      updateUserPreferences: new FakeUpdateUserPreferences(),
+      logger: false,
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/users/user_1/game-profile",
+    });
+
+    const body = JSON.parse(response.body) as GetGameProfileResult;
+
+    expect(response.statusCode).toBe(200);
+    expect(body.gameProfile).toMatchObject({
+      userId: "user_1",
+      totalXp: 105,
+      coins: 14,
+    });
+    expect(getGameProfile.calls).toEqual([{ userId: "user_1" }]);
+  });
+
   it("actualiza el estado de pausa del usuario", async () => {
     const pause = new FakeSetLearningPause();
     const app = await buildApp({
       exportUserData: new FakeExportUserData(),
+      getGameProfile: new FakeGetGameProfile(),
       getLearningOverview: new FakeGetLearningOverview(),
       getNextQuestion: new FakeGetNextQuestion(),
       getUserProfile: new FakeGetUserProfile(),
@@ -403,6 +579,7 @@ describe("GET /api/users/:userId/overview", () => {
     const updatePreferences = new FakeUpdateUserPreferences();
     const app = await buildApp({
       exportUserData: new FakeExportUserData(),
+      getGameProfile: new FakeGetGameProfile(),
       getLearningOverview: new FakeGetLearningOverview(),
       getNextQuestion: new FakeGetNextQuestion(),
       getUserProfile: new FakeGetUserProfile(),
@@ -437,6 +614,7 @@ describe("GET /api/users/:userId/overview", () => {
     const exportUserData = new FakeExportUserData();
     const app = await buildApp({
       exportUserData,
+      getGameProfile: new FakeGetGameProfile(),
       getLearningOverview: new FakeGetLearningOverview(),
       getNextQuestion: new FakeGetNextQuestion(),
       getUserProfile: new FakeGetUserProfile(),
@@ -467,6 +645,7 @@ describe("GET /api/users/:userId/overview", () => {
     const getUserProfile = new FakeGetUserProfile();
     const app = await buildApp({
       exportUserData: new FakeExportUserData(),
+      getGameProfile: new FakeGetGameProfile(),
       getLearningOverview: new FakeGetLearningOverview(),
       getNextQuestion: new FakeGetNextQuestion(),
       getUserProfile,

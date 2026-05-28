@@ -1,4 +1,6 @@
 import type {
+  GameActivitySnapshot,
+  GameProfileRepository,
   LearningEvent,
   LearningEventRepository,
   LearningOverview,
@@ -19,6 +21,7 @@ import type {
 } from "@project-name/core";
 import {
   ExportUserData,
+  GetGameProfile,
   GetLearningOverview,
   GetNextQuestion,
   GetUserPreferences,
@@ -26,7 +29,9 @@ import {
   SetLearningPause,
   SubmitUserResponse,
   UpdateUserPreferences,
+  scheduleNextReview,
 } from "@project-name/core";
+import { conceptBank, questionBank } from "@project-name/shared";
 
 const now = new Date("2026-05-27T12:00:00.000Z");
 
@@ -37,7 +42,7 @@ const demoUser: User = {
   updatedAt: now,
 };
 
-const demoQuestions: QuestionWithAnswers[] = [
+const legacyDemoQuestions: QuestionWithAnswers[] = [
   {
     id: "question_qa_regression_purpose",
     prompt:
@@ -101,6 +106,39 @@ const demoQuestions: QuestionWithAnswers[] = [
     ],
   },
 ];
+
+const conceptBySlug = new Map(conceptBank.map((concept) => [concept.slug, concept]));
+const demoQuestions: QuestionWithAnswers[] = questionBank.map((question) => ({
+  id: question.id,
+  prompt: question.prompt,
+  type: "multiple_choice",
+  conceptIds: question.conceptSlugs.map((slug) => conceptId(slug)),
+  concepts: question.conceptSlugs.map((slug) => ({
+    id: conceptId(slug),
+    name: conceptBySlug.get(slug)?.name ?? slug,
+    subtopicId: "subtopic_qa",
+  })),
+  answers: [
+    {
+      id: `${question.id}_answer_correct`,
+      questionId: question.id,
+      text: question.correct,
+      isCorrect: true,
+      explanation: `Correcto. ${question.explanation}`,
+    },
+    ...question.distractors.map((answer, index) => ({
+      id: `${question.id}_answer_distractor_${index + 1}`,
+      questionId: question.id,
+      text: answer,
+      isCorrect: false,
+      explanation: `No es el mejor foco para este escenario. ${question.explanation}`,
+    })),
+  ],
+}));
+
+function conceptId(slug: string): string {
+  return `concept_${slug}`;
+}
 
 type DemoStore = {
   responses: SaveUserResponseInput[];
@@ -177,10 +215,13 @@ class DemoOverview implements LearningOverviewRepository {
 
     const nextReviewAt = this.store.reviews
       .filter((review) => review.userId === userId)
-      .map((review) => {
-        const delayDays = review.isCorrect ? 3 : 1;
-        return new Date(review.reviewedAt.getTime() + delayDays * 24 * 60 * 60 * 1000);
-      })
+      .map(
+        (review) =>
+          scheduleNextReview({
+            reviewedAt: review.reviewedAt,
+            isCorrect: review.isCorrect,
+          }).nextReviewAt,
+      )
       .sort((left, right) => left.getTime() - right.getTime())[0];
 
     return {
@@ -207,6 +248,51 @@ class DemoOverview implements LearningOverviewRepository {
             submittedAt: response.submittedAt,
           };
         }),
+    };
+  }
+}
+
+class DemoGameProfiles implements GameProfileRepository {
+  constructor(private readonly store: DemoStore) {}
+
+  async getActivitySnapshotByUserId(userId: string): Promise<GameActivitySnapshot> {
+    const responses = this.store.responses.filter((response) => response.userId === userId);
+    const conceptIds = new Set<string>();
+    const concepts = new Map<
+      string,
+      { id: string; name: string; responseCount: number; correctCount: number }
+    >();
+    const activeDates = new Set<string>();
+
+    for (const response of responses) {
+      activeDates.add(response.submittedAt.toISOString().slice(0, 10));
+
+      const question = demoQuestions.find((candidate) => candidate.id === response.questionId);
+      for (const conceptId of question?.conceptIds ?? []) {
+        conceptIds.add(conceptId);
+        const concept = question?.concepts.find((candidate) => candidate.id === conceptId);
+        const current = concepts.get(conceptId) ?? {
+          id: conceptId,
+          name: concept?.name ?? "Concepto demo",
+          responseCount: 0,
+          correctCount: 0,
+        };
+
+        concepts.set(conceptId, {
+          ...current,
+          responseCount: current.responseCount + 1,
+          correctCount: current.correctCount + (response.isCorrect ? 1 : 0),
+        });
+      }
+    }
+
+    return {
+      userId,
+      totalResponses: responses.length,
+      correctResponses: responses.filter((response) => response.isCorrect).length,
+      conceptsExplored: conceptIds.size,
+      activeDays: activeDates.size,
+      concepts: Array.from(concepts.values()),
     };
   }
 }
@@ -288,16 +374,19 @@ class DemoDataExport implements UserDataExportRepository {
             const concept = demoQuestions
               .flatMap((question) => question.concepts)
               .find((candidate) => candidate.id === conceptId);
-            const delayDays = review.isCorrect ? 3 : 1;
+            const next = scheduleNextReview({
+              reviewedAt: review.reviewedAt,
+              isCorrect: review.isCorrect,
+            });
 
             return {
               conceptId,
               conceptName: concept?.name ?? "Concepto demo",
-              stability: review.isCorrect ? 1.5 : 0.5,
-              difficulty: review.isCorrect ? 0.3 : 0.7,
-              reviewCount: 1,
+              stability: next.stability,
+              difficulty: next.difficulty,
+              reviewCount: next.reviewCount,
               lastReviewedAt: review.reviewedAt,
-              nextReviewAt: new Date(review.reviewedAt.getTime() + delayDays * 24 * 60 * 60 * 1000),
+              nextReviewAt: next.nextReviewAt,
             };
           }),
         ),
@@ -330,6 +419,10 @@ export function buildDemoUseCases() {
     getLearningOverview: new GetLearningOverview({
       users,
       overview: new DemoOverview(store),
+    }),
+    getGameProfile: new GetGameProfile({
+      users,
+      gameProfiles: new DemoGameProfiles(store),
     }),
     getUserProfile: new GetUserProfile({
       users,

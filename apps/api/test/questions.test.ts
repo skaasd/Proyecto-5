@@ -1,5 +1,6 @@
 import type {
   ExportUserDataResult,
+  GetGameProfileResult,
   GetLearningOverviewResult,
   GetNextQuestionResult,
   GetUserPreferencesResult,
@@ -10,6 +11,7 @@ import type {
 } from "@project-name/core";
 import {
   ExportUserData,
+  GetGameProfile,
   GetLearningOverview,
   GetNextQuestion,
   GetUserPreferences,
@@ -35,6 +37,28 @@ class FakeExportUserData extends ExportUserData {
   }
 
   override async execute(): Promise<ExportUserDataResult> {
+    throw new Error("not used");
+  }
+}
+
+class FakeGetGameProfile extends GetGameProfile {
+  constructor() {
+    super({
+      users: { findById: async () => null },
+      gameProfiles: {
+        getActivitySnapshotByUserId: async () => ({
+          userId: "user_1",
+          totalResponses: 0,
+          correctResponses: 0,
+          conceptsExplored: 0,
+          activeDays: 0,
+          concepts: [],
+        }),
+      },
+    });
+  }
+
+  override async execute(): Promise<GetGameProfileResult> {
     throw new Error("not used");
   }
 }
@@ -240,6 +264,7 @@ describe("GET /api/questions/next", () => {
     const useCase = new FakeGetNextQuestion();
     const app = await buildApp({
       exportUserData: new FakeExportUserData(),
+      getGameProfile: new FakeGetGameProfile(),
       getLearningOverview: new FakeGetLearningOverview(),
       getNextQuestion: useCase,
       getUserProfile: new FakeGetUserProfile(),
@@ -263,5 +288,41 @@ describe("GET /api/questions/next", () => {
       { id: "answer_1", text: "Una señal rápida de estabilidad básica." },
     ]);
     expect(useCase.calls).toEqual([{ userId: "user_1" }]);
+  });
+
+  it("rechaza pedir la siguiente pregunta de otro usuario", async () => {
+    const useCase = new FakeGetNextQuestion();
+    const app = await buildApp({
+      exportUserData: new FakeExportUserData(),
+      getGameProfile: new FakeGetGameProfile(),
+      getLearningOverview: new FakeGetLearningOverview(),
+      getNextQuestion: useCase,
+      getUserProfile: new FakeGetUserProfile(),
+      getUserPreferences: new FakeGetUserPreferences(),
+      setLearningPause: new FakeSetLearningPause(),
+      submitUserResponse: new FakeSubmitUserResponse(),
+      updateUserPreferences: new FakeUpdateUserPreferences(),
+      userAccess: {
+        mode: "internal",
+        internalApiSecret: "test-secret",
+      },
+      logger: false,
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/questions/next?userId=user_2",
+      headers: {
+        "x-current-user-id": "user_1",
+        "x-internal-api-secret": "test-secret",
+      },
+    });
+
+    const body = JSON.parse(response.body) as { error: string };
+
+    expect(response.statusCode).toBe(403);
+    expect(body.error).toBe("USER_ACCESS_DENIED");
+    expect(useCase.calls).toEqual([]);
   });
 });

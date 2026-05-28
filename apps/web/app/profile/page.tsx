@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { getCurrentUser } from "@/lib/current-user";
+import { buildUserApiHeaders, getApiBaseUrl } from "@/lib/api-client";
+import { type CurrentUser, getCurrentUser } from "@/lib/current-user";
 import { ArrowLeft, Download, Gauge, Mail, UserCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -18,12 +19,11 @@ type UserProfileResponse = {
   };
 };
 
-async function getUserProfile(userId: string): Promise<UserProfileResponse | null> {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000";
-
+async function getUserProfile(currentUser: CurrentUser): Promise<UserProfileResponse | null> {
   try {
-    const response = await fetch(`${apiBaseUrl}/api/users/${userId}/profile`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/profile`, {
       cache: "no-store",
+      headers: buildUserApiHeaders(currentUser),
     });
 
     if (!response.ok) {
@@ -36,9 +36,8 @@ async function getUserProfile(userId: string): Promise<UserProfileResponse | nul
   }
 }
 
-function getExportUrl(userId: string) {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000";
-  return `${apiBaseUrl}/api/users/${userId}/export`;
+function getExportUrl() {
+  return "/api/learning-export";
 }
 
 function formatDate(value?: string) {
@@ -54,9 +53,9 @@ function formatDate(value?: string) {
 
 export default async function ProfilePage() {
   const currentUser = await getCurrentUser();
-  const response = await getUserProfile(currentUser.id);
+  const response = await getUserProfile(currentUser);
   const profile = response?.profile;
-  const exportUrl = getExportUrl(currentUser.id);
+  const exportUrl = getExportUrl();
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-8">

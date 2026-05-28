@@ -6,10 +6,22 @@ export type { UserLearningPreferences } from "./domain/user-learning-preferences
 export type { User } from "./domain/user.js";
 export type { ResponseChannel, UserResponse } from "./domain/user-response.js";
 export {
+  scheduleNextReview,
+  type ReviewMemoryState,
+  type ReviewSchedulingInput,
+  type ReviewSchedulingResult,
+} from "./domain/spaced-repetition.js";
+export {
   applyXpAward,
+  calculateGameProgression,
   calculateLevelProgress,
   xpRequiredForLevel,
+  type GameActivitySnapshot,
+  type GameBadge,
+  type GameConceptProgress,
   type GameProfile,
+  type GameProgression,
+  type GameSkillNode,
   type LevelProgress,
   type XPAward,
 } from "./domain/game-progression.js";
@@ -23,6 +35,7 @@ export type {
   LearningOverviewRepository,
 } from "./ports/learning-overview-repository.js";
 export type { LearningEventRepository } from "./ports/learning-event-repository.js";
+export type { GameProfileRepository } from "./ports/game-profile-repository.js";
 export type { MessagingChannel, OutboundMessage } from "./ports/messaging-channel.js";
 export type { QuestionRepository, SaveUserResponseInput } from "./ports/question-repository.js";
 export type {
@@ -42,10 +55,20 @@ export {
   type ExportUserDataResult,
 } from "./use-cases/export-user-data.js";
 export {
+  DeliverNextQuestion,
+  type DeliverNextQuestionInput,
+  type DeliverNextQuestionResult,
+} from "./use-cases/deliver-next-question.js";
+export {
   GetLearningOverview,
   type GetLearningOverviewInput,
   type GetLearningOverviewResult,
 } from "./use-cases/get-learning-overview.js";
+export {
+  GetGameProfile,
+  type GetGameProfileInput,
+  type GetGameProfileResult,
+} from "./use-cases/get-game-profile.js";
 export {
   GetNextQuestion,
   type GetNextQuestionInput,

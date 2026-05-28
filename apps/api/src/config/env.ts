@@ -4,10 +4,12 @@ const envSchema = z.object({
   API_HOST: z.string().default("0.0.0.0"),
   API_PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().url(),
+  DEMO_USER_ID: z.string().min(1).optional(),
   DEMO_MODE: z
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  INTERNAL_API_SECRET: z.string().min(1).optional(),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   REDIS_URL: z.string().url().optional(),

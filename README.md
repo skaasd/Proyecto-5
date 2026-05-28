@@ -64,10 +64,22 @@ pnpm db:generate
 pnpm db:migrate
 ```
 
-6. Levanta las apps:
+6. Carga el contenido inicial:
+
+```bash
+pnpm db:seed
+```
+
+7. Levanta las apps:
 
 ```bash
 pnpm dev
+```
+
+8. Encola una quest de prueba para el worker:
+
+```bash
+pnpm --filter @project-name/worker enqueue:send-question user_demo
 ```
 
 ## Comandos útiles
@@ -77,6 +89,8 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm db:migrate
+pnpm db:seed
 ```
 
 ## Principios de producto

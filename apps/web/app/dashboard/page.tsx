@@ -1,6 +1,7 @@
 import { signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
-import { getCurrentUser } from "@/lib/current-user";
+import { buildUserApiHeaders, getApiBaseUrl } from "@/lib/api-client";
+import { type CurrentUser, getCurrentUser } from "@/lib/current-user";
 import {
   BadgeGrid,
   CoinDisplay,
@@ -54,13 +55,26 @@ type UserPreferencesResponse = {
   };
 };
 
-const demoGameProfile = {
-  level: 3,
-  totalXp: 260,
-  coins: 85,
-  constanciaDays: 6,
-  currentLevelXp: 120,
-  nextLevelXp: 480,
+type GameProfileResponse = {
+  gameProfile: {
+    userId: string;
+    level: number;
+    totalXp: number;
+    coins: number;
+    constanciaDays: number;
+    currentLevelXp: number;
+    nextLevelXp: number;
+    badges: Array<{
+      title: string;
+      rarity: "common" | "rare" | "epic";
+      isLocked?: boolean;
+    }>;
+    skillNodes: Array<{
+      label: string;
+      level: string;
+      state: "mastered" | "active" | "locked";
+    }>;
+  };
 };
 
 const demoSkillNodes = [
@@ -89,7 +103,6 @@ async function submitUserResponse(formData: FormData) {
   "use server";
 
   const currentUser = await getCurrentUser();
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000";
   const questionId = formData.get("questionId");
   const answerId = formData.get("answerId");
 
@@ -97,11 +110,11 @@ async function submitUserResponse(formData: FormData) {
     redirect("/dashboard?feedback=Elige%20un%20movimiento%20para%20registrar%20tu%20avance.");
   }
 
-  const response = await fetch(`${apiBaseUrl}/api/responses`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/responses`, {
     method: "POST",
-    headers: {
+    headers: buildUserApiHeaders(currentUser, {
       "content-type": "application/json",
-    },
+    }),
     body: JSON.stringify({
       userId: currentUser.id,
       questionId,
@@ -125,14 +138,13 @@ async function toggleLearningPause(formData: FormData) {
   "use server";
 
   const currentUser = await getCurrentUser();
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000";
   const isPaused = formData.get("isPaused") === "true";
 
-  const response = await fetch(`${apiBaseUrl}/api/users/${currentUser.id}/pause`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/pause`, {
     method: "POST",
-    headers: {
+    headers: buildUserApiHeaders(currentUser, {
       "content-type": "application/json",
-    },
+    }),
     body: JSON.stringify({
       isPaused,
     }),
@@ -153,15 +165,14 @@ async function updateLearningCadence(formData: FormData) {
   "use server";
 
   const currentUser = await getCurrentUser();
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000";
   const questionsPerWeek = Number(formData.get("questionsPerWeek"));
   const tipsPerWeek = Number(formData.get("tipsPerWeek"));
 
-  const response = await fetch(`${apiBaseUrl}/api/users/${currentUser.id}/preferences`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/preferences`, {
     method: "PATCH",
-    headers: {
+    headers: buildUserApiHeaders(currentUser, {
       "content-type": "application/json",
-    },
+    }),
     body: JSON.stringify({
       questionsPerWeek,
       tipsPerWeek,
@@ -175,12 +186,11 @@ async function updateLearningCadence(formData: FormData) {
   redirect("/dashboard?feedback=Actualizamos%20tu%20ritmo%20de%20aprendizaje.");
 }
 
-async function getNextQuestion(userId: string): Promise<NextQuestionResponse | null> {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000";
-
+async function getNextQuestion(currentUser: CurrentUser): Promise<NextQuestionResponse | null> {
   try {
-    const response = await fetch(`${apiBaseUrl}/api/questions/next?userId=${userId}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/questions/next?userId=${currentUser.id}`, {
       cache: "no-store",
+      headers: buildUserApiHeaders(currentUser),
     });
 
     if (!response.ok) {
@@ -193,12 +203,13 @@ async function getNextQuestion(userId: string): Promise<NextQuestionResponse | n
   }
 }
 
-async function getUserPreferences(userId: string): Promise<UserPreferencesResponse | null> {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000";
-
+async function getUserPreferences(
+  currentUser: CurrentUser,
+): Promise<UserPreferencesResponse | null> {
   try {
-    const response = await fetch(`${apiBaseUrl}/api/users/${userId}/preferences`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/preferences`, {
       cache: "no-store",
+      headers: buildUserApiHeaders(currentUser),
     });
 
     if (!response.ok) {
@@ -211,12 +222,13 @@ async function getUserPreferences(userId: string): Promise<UserPreferencesRespon
   }
 }
 
-async function getLearningOverview(userId: string): Promise<LearningOverviewResponse | null> {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000";
-
+async function getLearningOverview(
+  currentUser: CurrentUser,
+): Promise<LearningOverviewResponse | null> {
   try {
-    const response = await fetch(`${apiBaseUrl}/api/users/${userId}/overview`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/overview`, {
       cache: "no-store",
+      headers: buildUserApiHeaders(currentUser),
     });
 
     if (!response.ok) {
@@ -229,9 +241,25 @@ async function getLearningOverview(userId: string): Promise<LearningOverviewResp
   }
 }
 
-function getExportUrl(userId: string) {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:4000";
-  return `${apiBaseUrl}/api/users/${userId}/export`;
+async function getGameProfile(currentUser: CurrentUser): Promise<GameProfileResponse | null> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/api/users/${currentUser.id}/game-profile`, {
+      cache: "no-store",
+      headers: buildUserApiHeaders(currentUser),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as GameProfileResponse;
+  } catch {
+    return null;
+  }
+}
+
+function getExportUrl() {
+  return "/api/learning-export";
 }
 
 function formatTime(totalTimeMs: number) {
@@ -278,18 +306,30 @@ export default async function DashboardPage({
   searchParams?: { feedback?: string };
 }) {
   const currentUser = await getCurrentUser();
-  const [nextQuestion, learningOverview, userPreferencesResponse] = await Promise.all([
-    getNextQuestion(currentUser.id),
-    getLearningOverview(currentUser.id),
-    getUserPreferences(currentUser.id),
-  ]);
+  const [nextQuestion, learningOverview, userPreferencesResponse, gameProfileResponse] =
+    await Promise.all([
+      getNextQuestion(currentUser),
+      getLearningOverview(currentUser),
+      getUserPreferences(currentUser),
+      getGameProfile(currentUser),
+    ]);
   const userPreferences = userPreferencesResponse?.preferences;
   const feedback = searchParams?.feedback;
   const overview = learningOverview?.overview;
+  const gameProfile = gameProfileResponse?.gameProfile ?? {
+    level: 1,
+    totalXp: 0,
+    coins: 0,
+    constanciaDays: 0,
+    currentLevelXp: 0,
+    nextLevelXp: 120,
+    badges: demoBadges.map((badge) => ({ ...badge, isLocked: true })),
+    skillNodes: demoSkillNodes.map((node) => ({ ...node, state: "locked" as const })),
+  };
   const isPaused = userPreferences?.isPaused ?? false;
   const accuracyPercent = Math.round((overview?.accuracyRate ?? 0) * 100);
   const questionsPercent = Math.min((overview?.totalResponses ?? 0) * 20, 100);
-  const exportUrl = getExportUrl(currentUser.id);
+  const exportUrl = getExportUrl();
   const metrics = [
     { label: "Conceptos explorados", value: String(overview?.conceptsExplored ?? 0) },
     { label: "Movimientos registrados", value: String(overview?.totalResponses ?? 0) },
@@ -347,13 +387,13 @@ export default async function DashboardPage({
 
       <section className="mt-8 rounded-lg border bg-surface p-5">
         <div className="grid gap-5 lg:grid-cols-[auto_auto_auto_1fr] lg:items-center">
-          <LevelBadge level={demoGameProfile.level} />
-          <CoinDisplay coins={demoGameProfile.coins} />
-          <ConstanciaIndicator days={demoGameProfile.constanciaDays} />
+          <LevelBadge level={gameProfile.level} />
+          <CoinDisplay coins={gameProfile.coins} />
+          <ConstanciaIndicator days={gameProfile.constanciaDays} />
           <XPBar
-            currentXp={demoGameProfile.totalXp}
-            currentLevelXp={demoGameProfile.currentLevelXp}
-            nextLevelXp={demoGameProfile.nextLevelXp}
+            currentXp={gameProfile.totalXp}
+            currentLevelXp={gameProfile.currentLevelXp}
+            nextLevelXp={gameProfile.nextLevelXp}
             label="Próximo desbloqueo"
           />
         </div>
@@ -415,7 +455,7 @@ export default async function DashboardPage({
             <h2 className="text-lg font-semibold">Mapa de habilidades</h2>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {demoSkillNodes.map((node) => (
+            {gameProfile.skillNodes.map((node) => (
               <SkillNode
                 key={node.label}
                 label={node.label}
@@ -523,7 +563,7 @@ export default async function DashboardPage({
           <h2 className="mt-2 text-xl font-semibold">Insignias de ruta</h2>
         </div>
         <div className="mt-6">
-          <BadgeGrid badges={demoBadges} />
+          <BadgeGrid badges={gameProfile.badges} />
         </div>
       </section>
 

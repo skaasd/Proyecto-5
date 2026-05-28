@@ -2,6 +2,17 @@
 
 La API HTTP vive en `apps/api` y expone rutas bajo `/api`.
 
+## Autenticacion interna
+
+Las rutas que operan sobre un `userId` requieren llamadas internas desde la web con estos headers:
+
+```txt
+x-current-user-id: user_123
+x-internal-api-secret: valor de INTERNAL_API_SECRET
+```
+
+La API rechaza la llamada si `x-current-user-id` no coincide con el `userId` solicitado. El `DEMO_USER_ID` se mantiene disponible sin secreto solo en entornos no productivos o cuando `DEMO_MODE=true`.
+
 ## Health check
 
 `GET /health`
@@ -76,6 +87,35 @@ Respuesta:
 }
 ```
 
+## Perfil gamificado
+
+`GET /api/users/:userId/game-profile`
+
+Respuesta:
+
+```json
+{
+  "gameProfile": {
+    "userId": "user_123",
+    "level": 2,
+    "totalXp": 335,
+    "coins": 68,
+    "constanciaDays": 3,
+    "currentLevelXp": 120,
+    "nextLevelXp": 480,
+    "progressRatio": 0.597,
+    "badges": [
+      { "title": "Primer movimiento", "rarity": "common", "isLocked": false }
+    ],
+    "skillNodes": [
+      { "label": "Pruebas de humo", "level": "Nivel 2", "state": "active" }
+    ]
+  }
+}
+```
+
+El perfil se deriva de respuestas reales registradas: movimientos, aciertos, conceptos explorados y dias activos. Los nodos de habilidad salen de los conceptos practicados.
+
 ## Perfil de usuario
 
 `GET /api/users/:userId/profile`
@@ -129,6 +169,8 @@ Body para pausar o reanudar:
 ## Exportación de datos
 
 `GET /api/users/:userId/export`
+
+Desde la web, la descarga publica debe usar `GET /api/learning-export`, que resuelve el usuario actual con NextAuth y reenvia la llamada a Fastify con autenticacion interna.
 
 Devuelve un JSON descargable con:
 
